@@ -68,7 +68,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Install prerequisites
-        run: apt update && apt install -y qemu-system-arm qemu-efi-aarch64 python3-pytest python3-fastapi iproute2 iptables procps
+        run: apt update && apt install -y qemu-system-arm qemu-efi-aarch64 python3-pytest python3-fastapi python3-libvirt iproute2 iptables procps
       - name: Run libvirt/qemu as root # Avoids libvirt-qemu pytest directory permission issues
         run: |
           sed -i 's/#user = "root"/user = "root"/' /etc/libvirt/qemu.conf 
