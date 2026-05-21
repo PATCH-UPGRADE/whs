@@ -161,7 +161,6 @@ async def upload_image(request:Request, model_store:model_store_dependency, file
     vm_image_path = f"{config.vm_image_dir}/images"
     os.makedirs(vm_image_path, exist_ok=True)
     file_path = f"{vm_image_path}/{filename}"
-    print(file_path)
 
     try:
         with open(file_path, 'wb') as buffer:
