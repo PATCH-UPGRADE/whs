@@ -86,7 +86,7 @@ jobs:
             podman network create net \
               -d bridge \
               -o com.docker.network.bridge.name=whs-lab \
-              --label carthage.layout=viper-whs \
+              --label carthage.layout=whs \
               --subnet 10.20.100.0/24 \
               --gateway 10.20.100.1 \
               -o mode=unmanaged
@@ -99,10 +99,10 @@ jobs:
       - name: Obtain Debian VM image
         run: |
           install -d -m 0775 -o root -g root /srv/carthage/libvirt
-          install -d -m 0775 -o root -g root /srv/carthage/libvirt/viper-whs-ci
-          install -d -m 0775 -o root -g root /srv/carthage/libvirt/viper-whs-ci/cache
+          install -d -m 0775 -o root -g root /srv/carthage/libvirt/whs-ci
+          install -d -m 0775 -o root -g root /srv/carthage/libvirt/whs-ci/cache
           wget https://cloud.debian.org/images/cloud/trixie/latest/debian-13-nocloud-arm64.qcow2 -P /srv/carthage/libvirt
       - name: Run deployment tests
         env:
-          WHS_TEST_VM_IMAGE_DIR: /srv/carthage/libvirt/viper-whs-ci
+          WHS_TEST_VM_IMAGE_DIR: /srv/carthage/libvirt/whs-ci
         run: mkdir -p /srv/whs && cd layout && pytest --basetemp=/srv/whs

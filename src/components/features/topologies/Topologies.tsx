@@ -66,44 +66,42 @@ const DeploymentStatusBlock = ({
       <div className="text-lg gap-2">
         <div className="font-bold">Running:</div>
         <div className="pl-4">
-          {status?.running.toString() ?? deployed.toString()}
+          {status ? JSON.stringify(status.running) : deployed}
         </div>
       </div>
 
       <div className="text-lg gap-2">
         <div className="font-bold">Successes:</div>
         <div className="pl-4">
-          {status?.successes.length ? status.successes : "n/a"}
+          {status ? JSON.stringify(status.successes) : "n/a"}
         </div>
       </div>
 
       <div className="text-lg gap-2">
         <div className="font-bold">Failures:</div>
         <div className="pl-4">
-          {status?.failures.length ? status.failures : "n/a"}
+          {status ? JSON.stringify(status.failures) : "n/a"}
         </div>
       </div>
 
       <div className="text-lg gap-2">
         <div className="font-bold">Dependency Failures:</div>
         <div className="pl-4">
-          {status?.dependency_failures.length
-            ? status.dependency_failures
-            : "n/a"}
+          {status ? JSON.stringify(status.dependency_failures) : "n/a"}
         </div>
       </div>
 
       <div className="text-lg gap-2">
         <div className="font-bold">Ignored:</div>
         <div className="pl-4">
-          {status?.ignored.length ? status.ignored : "n/a"}
+          {status ? JSON.stringify(status.ignored) : "n/a"}
         </div>
       </div>
 
       <div className="text-lg gap-2">
         <div className="font-bold">Orphans:</div>
         <div className="pl-4">
-          {status?.orphans.length ? status.orphans : "n/a"}
+          {status ? JSON.stringify(status.orphans) : "n/a"}
         </div>
       </div>
     </div>

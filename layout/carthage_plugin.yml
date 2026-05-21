@@ -1,9 +1,9 @@
-name: viper-whs
+name: whs
 dependencies:
   - deb: python3-fastapi
 config:
   authorized_keys: authorized_keys
-  base_dir: /srv/viper-whs
+  base_dir: /srv/whs
   debian:
     distribution: trixie
   container_prefix: 'whs-'
