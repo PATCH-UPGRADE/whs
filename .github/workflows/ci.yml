@@ -105,4 +105,4 @@ jobs:
       - name: Run deployment tests
         env:
           WHS_TEST_VM_IMAGE_DIR: /srv/carthage/libvirt/whs-ci
-        run: mkdir -p /srv/whs && cd layout && pytest --basetemp=/srv/whs
+        run: mkdir -p /srv/whs-pytest && cd layout && pytest --basetemp=/srv/whs-pytest
