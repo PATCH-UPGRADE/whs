@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import shutil
 import struct
-from typing import Annotated
+from typing import Annotated, get_args
 from fastapi.responses import JSONResponse
 import uvicorn
 import libvirt
@@ -152,7 +152,7 @@ async def upload_image(request:Request, model_store:model_store_dependency, file
 
     # splitext returns ['name', '.ext'] but we want the ext without the dot
     extension = os.path.splitext(filename)[1][1:].lower()
-    if not extension in VmImage.type:
+    if not extension in get_args(VmImage.model_fields['type'].annotation):
         raise HTTPException(status_code=400, detail=f"Invalid extension type. Supported extensions are [{VmImage.type}]")
 
     image_model = VmImage(name=filename, type=extension, description=description, version=version)
@@ -402,7 +402,7 @@ async def vnc_websocket_proxy(
 
 @inject(
     layout=InjectionKey(CarthageLayout, _ready=False),
-    plugin=InjectionKey(CarthagePlugin, name='viper-whs'),
+    plugin=InjectionKey(CarthagePlugin, name='whs'),
     injector=Injector)
 async def build_web_app(layout, plugin, injector):
     app = FastAPI()
