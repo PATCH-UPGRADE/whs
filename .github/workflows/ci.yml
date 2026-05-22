@@ -4,7 +4,7 @@ env:
   NODE_VERSION: '20'
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
     tags: ['*']
   pull_request:
     branches: [main]
@@ -163,6 +163,12 @@ jobs:
         run: |
           podman tag whs:latest ghcr.io/patch-upgrade/whs:latest
           podman push ghcr.io/patch-upgrade/whs:latest
+
+      - name: Push development image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        run: |
+          podman tag whs:latest ghcr.io/patch-upgrade/whs:develop
+          podman push ghcr.io/patch-upgrade/whs:develop
 
       - name: Push tagged image
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
