@@ -1,0 +1,6 @@
+[NetDev]
+Name=whs-lab
+Kind=bridge
+MACAddress=60:76:3e:3b:ce:25
+[Bridge]
+VLANFiltering=False
