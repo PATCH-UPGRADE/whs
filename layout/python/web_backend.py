@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import socket
 import os
 from pathlib import Path
@@ -433,4 +434,4 @@ async def start_web_server(app):
                              host='0.0.0.0',
                             )
     server = uvicorn.Server(config)
-    asyncio.get_event_loop().create_task(server.serve())
+    asyncio.get_event_loop().create_task(server.serve(), context=contextvars.Context())
