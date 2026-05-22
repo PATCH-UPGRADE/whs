@@ -3,7 +3,7 @@ dependencies:
   - deb: python3-fastapi
   - deb: python3-python-multipart
 config:
-  authorized_keys: authorized_keys
+  authorized_keys: /dev/null
   base_dir: /srv/whs
   debian:
     distribution: trixie
