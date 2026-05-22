@@ -4,8 +4,6 @@ description: Download the dist artifact, unpack it, and build the Containerfile 
 runs:
   using: composite
   steps:
-    - uses: actions/checkout@v4
-
     - name: Install podman
       shell: bash
       run: |
