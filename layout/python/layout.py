@@ -26,7 +26,7 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
     asyncio.ensure_future(ainjector.get_instance_async(web_server_key))
 
     class layout(CarthageLayout):
-        layout_name = 'viper-whs'
+        layout_name = 'whs'
         domain = 'whs.local'
         from .images import WhsBaseImage, WhsRouter, whs_vm_image
         add_provider(podman_container_host, LocalPodmanContainerHost)

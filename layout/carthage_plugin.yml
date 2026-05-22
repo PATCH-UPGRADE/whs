@@ -1,4 +1,4 @@
-name: viper-whs
+name: whs
 dependencies:
   - deb: python3-fastapi
   - deb: python3-python-multipart

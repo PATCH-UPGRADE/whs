@@ -39,7 +39,7 @@ if CARTHAGE_BASE_ROOT.exists():
 
 base_injector(load_plugin, LAYOUT_ROOT)
 
-layout_plugin = base_injector.get_instance(InjectionKey(CarthagePlugin, name="viper-whs"))
+layout_plugin = base_injector.get_instance(InjectionKey(CarthagePlugin, name="whs"))
 plugin_package_name = layout_plugin.package.__name__
 layout_module = importlib.import_module(f"{plugin_package_name}.layout")
 models_module = importlib.import_module(f"{plugin_package_name}.models")
@@ -117,7 +117,7 @@ def layout(ainjector, loop):
 
 @pytest.fixture
 def app(ainjector, loop):
-    plugin = ainjector.injector.get_instance(InjectionKey(CarthagePlugin, name="viper-whs"))
+    plugin = ainjector.injector.get_instance(InjectionKey(CarthagePlugin, name="whs"))
     dist_root = (plugin.resource_dir / "../dist").resolve()
     created_dist_root = not dist_root.exists()
     dist_root.mkdir(parents=True, exist_ok=True)
