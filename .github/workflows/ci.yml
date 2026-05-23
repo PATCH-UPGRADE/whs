@@ -115,10 +115,8 @@ jobs:
           iptables -t nat -C POSTROUTING -s 10.20.100.0/24 ! -o whs-lab -j MASQUERADE || iptables -t nat -A POSTROUTING -s 10.20.100.0/24 ! -o whs-lab -j MASQUERADE
       - name: Obtain Debian VM image
         run: |
-          install -d -m 0775 -o root -g root /srv/carthage/libvirt
-          install -d -m 0775 -o root -g root /srv/carthage/libvirt/whs-ci
-          install -d -m 0775 -o root -g root /srv/carthage/libvirt/whs-ci/cache
-          wget https://cloud.debian.org/images/cloud/trixie/latest/debian-13-nocloud-arm64.qcow2 -P /srv/carthage/libvirt
+          mkdir -p /srv/carthage/libvirt/whs-ci/images
+          wget https://cloud.debian.org/images/cloud/trixie/latest/debian-13-nocloud-arm64.qcow2 -P /srv/carthage/libvirt/whs-ci/images
       - name: Run deployment tests
         env:
           WHS_TEST_VM_IMAGE_DIR: /srv/carthage/libvirt/whs-ci
