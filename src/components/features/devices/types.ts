@@ -26,7 +26,7 @@ export const deviceInputSchema = z.object({
   disk: z.number(),
   disk_controller: z.enum(DiskControllerType),
   display: z.boolean(),
-  image_id: z.string(),
+  image_id: z.string().nullable(),
   dhcp: z.boolean(),
   mac_address: z.string().optional(),
   ipv4_manual: z.string().optional(),
@@ -46,7 +46,7 @@ export const deviceOutputSchema = z.object({
   disk: z.number(),
   disk_controller: z.enum(DiskControllerType),
   display: z.boolean(),
-  image_id: z.string(),
+  image_id: z.string().nullable(),
   dhcp: z.boolean(),
   mac_address: z.string().optional(),
   ipv4_manual: z.string().optional(),
@@ -54,7 +54,7 @@ export const deviceOutputSchema = z.object({
   dns_servers: z.array(z.string()),
 });
 
-export const devicesSchema = z.array(deviceInputSchema);
+export const devicesSchema = z.array(deviceOutputSchema);
 
 export const createDeviceSchema = z.object({});
 

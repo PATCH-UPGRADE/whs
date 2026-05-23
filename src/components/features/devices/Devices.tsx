@@ -36,7 +36,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { getImages } from "../images/hooks";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { DeviceImageSelectField } from "./DeviceImageSelectField";
 import { columns } from "./columns";
 import { getDevices, useCreateDevice } from "./hooks";
 import {
@@ -61,6 +63,14 @@ export const DeviceCreateUpdateModal = ({
   setOpen: (open: boolean) => void;
   isUpdate?: boolean;
 }) => {
+  const {
+    data: images = [],
+    isError: isImagesError,
+  } = useQuery({
+    queryKey: ["images"],
+    queryFn: getImages,
+  });
+
   const onSubmit = (values: DeviceFormValues) => {
     console.log("onSubmit");
     handleCreate(values);
@@ -355,25 +365,10 @@ export const DeviceCreateUpdateModal = ({
                 )}
               />
 
-              <FormField
+              <DeviceImageSelectField
                 control={form.control}
-                name="image_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Image ID</FormLabel>
-                    <FormDescription>
-                      TODO: If no ID is provided a default image may be used
-                    </FormDescription>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        placeholder="e.g. 192.168.0.254"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                images={images}
+                imagesError={isImagesError}
               />
 
               <FormField
@@ -545,7 +540,7 @@ export const DevicesContainer = () => {
       disk: 20480, // Megabytes
       disk_controller: "virtio",
       display: false,
-      image_id: "",
+      image_id: null,
       dhcp: true,
       mac_address: undefined,
       ipv4_manual: undefined,
