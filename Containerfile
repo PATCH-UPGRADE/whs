@@ -20,6 +20,6 @@ RUN podman network create net \
               --label carthage.layout=whs \
               --subnet 10.20.100.0/24 \
               --gateway 10.20.100.1 \
-              -o mode=unmanaged
+              -o mode=unmanaged && rm -rf /run/containers /run/libpod
 LABEL run_whs 'podman run -d -ti --privileged -p 8080:8080 --group-add=keep-groups -v$NAME:/srv/whs --name $NAME $IMAGE'
 LABEL develop_whs 'podman run -d -ti --privileged -p 8080:8080 --group-add=keep-groups -v${PWD}:/app -v$NAME:/srv/whs --name $NAME $IMAGE'
