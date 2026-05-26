@@ -47,6 +47,8 @@ import {
   DiskControllerType,
   deviceInputSchema,
 } from "./types";
+import { getImages } from "../images/hooks";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const DeviceCreateUpdateModal = ({
   form,
@@ -61,12 +63,22 @@ export const DeviceCreateUpdateModal = ({
   setOpen: (open: boolean) => void;
   isUpdate?: boolean;
 }) => {
+  const {
+    data: images,
+    isPending,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["images"],
+    queryFn: getImages,
+  });
+
+  
   const onSubmit = (values: DeviceFormValues) => {
-    console.log("onSubmit");
     handleCreate(values);
   };
 
-  const isPending = form.formState.isSubmitting;
+  const isFormPending = form.formState.isSubmitting;
   const verbLabel = isUpdate ? "Update" : "Create";
   const description = isUpdate
     ? "Modify Device fields then press 'Update Device' below when you are finished"
@@ -118,6 +130,37 @@ export const DeviceCreateUpdateModal = ({
                     </FormDescription>
                     <FormControl>
                       <Input type="text" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="image_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Image ID</FormLabel>
+                    <FormDescription>
+                      TODO: If no ID is provided a default image may be used
+                    </FormDescription>
+                    <FormControl>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select Image" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            <SelectLabel>Select Image</SelectLabel>
+                            {images?.map(({id, name}, index) => (
+                              <SelectItem value={id} key={index}>
+                                {name}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -357,27 +400,6 @@ export const DeviceCreateUpdateModal = ({
 
               <FormField
                 control={form.control}
-                name="image_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Image ID</FormLabel>
-                    <FormDescription>
-                      TODO: If no ID is provided a default image may be used
-                    </FormDescription>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        placeholder="e.g. 192.168.0.254"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
                 name="dhcp"
                 render={({ field }) => (
                   <FormItem>
@@ -509,7 +531,7 @@ export const DeviceCreateUpdateModal = ({
           <DialogClose asChild>
             <Button variant="outline">Cancel</Button>
           </DialogClose>
-          <Button type="submit" form="device-form" disabled={isPending}>
+          <Button type="submit" form="device-form" disabled={isFormPending}>
             {verbLabel} Device
           </Button>
         </DialogFooter>
