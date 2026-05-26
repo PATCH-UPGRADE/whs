@@ -37,6 +37,16 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { getImages } from "../images/hooks";
 import { columns } from "./columns";
 import { getDevices, useCreateDevice } from "./hooks";
 import {
@@ -47,8 +57,6 @@ import {
   DiskControllerType,
   deviceInputSchema,
 } from "./types";
-import { getImages } from "../images/hooks";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const DeviceCreateUpdateModal = ({
   form,
@@ -65,15 +73,14 @@ export const DeviceCreateUpdateModal = ({
 }) => {
   const {
     data: images,
-    isPending,
-    isError,
-    error,
+    // isPending,
+    // isError,
+    // error,
   } = useQuery({
     queryKey: ["images"],
     queryFn: getImages,
   });
 
-  
   const onSubmit = (values: DeviceFormValues) => {
     handleCreate(values);
   };
@@ -150,14 +157,17 @@ export const DeviceCreateUpdateModal = ({
                       TODO: If no ID is provided a default image may be used
                     </FormDescription>
                     <FormControl>
-                      <Select value={field.value} onValueChange={field.onChange}>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select Image" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectGroup>
                             <SelectLabel>Select Image</SelectLabel>
-                            {images?.map(({id, name}, index) => (
+                            {images?.map(({ id, name }, index) => (
                               <SelectItem value={id} key={index}>
                                 {name}
                               </SelectItem>
