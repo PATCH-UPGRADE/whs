@@ -105,12 +105,12 @@ export const DeviceCreateUpdateModal = ({
                   <FormItem>
                     <FormLabel>Name *</FormLabel>
                     <FormDescription>
-                      The given name for this Device
+                      Enter the device DNS hostname without the domain suffix.
                     </FormDescription>
                     <FormControl>
                       <Input
                         type="text"
-                        placeholder="e.g., Heart Rate Monitor"
+                        placeholder="e.g., hrmonitor-01"
                         {...field}
                       />
                     </FormControl>
@@ -126,10 +126,14 @@ export const DeviceCreateUpdateModal = ({
                   <FormItem>
                     <FormLabel>Description *</FormLabel>
                     <FormDescription>
-                      Provide any additional details here
+                      Describe the device role or modality.
                     </FormDescription>
                     <FormControl>
-                      <Input type="text" {...field} />
+                      <Input
+                        type="text"
+                        placeholder="e.g., Heart rate monitor"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -173,6 +177,10 @@ export const DeviceCreateUpdateModal = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Device Type *</FormLabel>
+                    <FormDescription>
+                      Select whether this OT asset is modeled as a virtual
+                      machine or a container.
+                    </FormDescription>
                     <FormControl>
                       <RadioGroup
                         onValueChange={(val: string) => {
@@ -208,7 +216,8 @@ export const DeviceCreateUpdateModal = ({
                   <FormItem>
                     <FormLabel>Cloud Init *</FormLabel>
                     <FormDescription>
-                      Leave CHECKED to use Cloud Init
+                      Enable or disable cloud-init customization for this
+                      device.
                     </FormDescription>
                     <FormControl>
                       <Checkbox
@@ -264,7 +273,8 @@ export const DeviceCreateUpdateModal = ({
                   <FormItem>
                     <FormLabel>CPU Cores *</FormLabel>
                     <FormDescription>
-                      The number of CPU cores the Device should have
+                      Set the number of virtual CPU cores assigned to this
+                      device.
                     </FormDescription>
                     <FormControl>
                       <Input
@@ -292,7 +302,7 @@ export const DeviceCreateUpdateModal = ({
                   <FormItem>
                     <FormLabel>Memory *</FormLabel>
                     <FormDescription>
-                      The amount of memory (in MBs) the Device should have
+                      Set the memory allocation for the device in MB.
                     </FormDescription>
                     <FormControl>
                       <Input
@@ -320,7 +330,7 @@ export const DeviceCreateUpdateModal = ({
                   <FormItem>
                     <FormLabel>Disk *</FormLabel>
                     <FormDescription>
-                      The amount of disk space (in MBs) the Device should have
+                      Set the device disk size in MB.
                     </FormDescription>
                     <FormControl>
                       <Input
@@ -348,7 +358,8 @@ export const DeviceCreateUpdateModal = ({
                   <FormItem>
                     <FormLabel>Disk Controller *</FormLabel>
                     <FormDescription>
-                      The disk controller used for the disk
+                      Select the virtual disk controller presented to the
+                      device.
                     </FormDescription>
                     <FormControl>
                       <RadioGroup
@@ -385,7 +396,7 @@ export const DeviceCreateUpdateModal = ({
                   <FormItem>
                     <FormLabel>Require Display *</FormLabel>
                     <FormDescription>
-                      Toggle TRUE if a Display component is required
+                      Specify whether the device needs a graphical display.
                     </FormDescription>
                     <FormControl>
                       <Checkbox
@@ -405,9 +416,8 @@ export const DeviceCreateUpdateModal = ({
                   <FormItem>
                     <FormLabel>DHCP *</FormLabel>
                     <FormDescription>
-                      Leave CHECKED to use DHCP. If a static is desired, set
-                      this to UNCHECKED and manually set ipv4, gateway, and
-                      dns_servers fields below.
+                      Enable DHCP for automatic addressing, or disable it and
+                      provide static network settings below.
                     </FormDescription>
                     <FormControl>
                       <Checkbox
@@ -427,7 +437,8 @@ export const DeviceCreateUpdateModal = ({
                   <FormItem>
                     <FormLabel>MAC Address</FormLabel>
                     <FormDescription>
-                      Optional: Override automatic MAC Address assignment
+                      Optionally set a specific MAC address instead of using an
+                      automatic assignment.
                     </FormDescription>
                     <FormControl>
                       <Input
@@ -453,7 +464,7 @@ export const DeviceCreateUpdateModal = ({
                   <FormItem>
                     <FormLabel>ipv4</FormLabel>
                     <FormDescription>
-                      Optional: Override automatic IP assignment
+                      Enter a static IPv4 address when DHCP is disabled.
                     </FormDescription>
                     <FormControl>
                       <Input
@@ -479,7 +490,8 @@ export const DeviceCreateUpdateModal = ({
                   <FormItem>
                     <FormLabel>Default Gateway</FormLabel>
                     <FormDescription>
-                      Optional: Override default gateway assignment
+                      Enter the default gateway for a statically addressed
+                      device.
                     </FormDescription>
                     <FormControl>
                       <Input

@@ -1,0 +1,24 @@
+name: Build container image
+description: Download the dist artifact, unpack it, and build the Containerfile with podman.
+
+runs:
+  using: composite
+  steps:
+    - name: Install podman
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y podman
+
+    - name: Download dist artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: dist
+
+    - name: Unpack dist artifact
+      shell: bash
+      run: tar -xzf dist.tar.gz
+
+    - name: Build container image
+      shell: bash
+      run: podman build -f Containerfile -t whs:latest .

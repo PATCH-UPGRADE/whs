@@ -82,7 +82,7 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
             device_dns_servers = device.dns_servers
             device_image = model_store.get_device_image(device)
             vm_image = (
-                dependency_quote(Path(config.libvirt.image_dir) / device_image.name)
+                dependency_quote(Path(config.vm_image_dir)/"images" / device_image.name)
                 if device_image is not None
                 else whs_vm_image
             )
