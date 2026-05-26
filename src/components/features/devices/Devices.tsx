@@ -63,10 +63,7 @@ export const DeviceCreateUpdateModal = ({
   setOpen: (open: boolean) => void;
   isUpdate?: boolean;
 }) => {
-  const {
-    data: images = [],
-    isError: isImagesError,
-  } = useQuery({
+  const { data: images = [], isError: isImagesError } = useQuery({
     queryKey: ["images"],
     queryFn: getImages,
   });

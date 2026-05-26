@@ -78,7 +78,9 @@ export const DeviceImageSelectField = ({
               </Select>
             </FormControl>
             {imagesError ? (
-              <FormDescription>Unable to load images right now.</FormDescription>
+              <FormDescription>
+                Unable to load images right now.
+              </FormDescription>
             ) : null}
             <FormMessage />
           </FormItem>
