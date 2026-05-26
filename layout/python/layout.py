@@ -1,6 +1,7 @@
 import asyncio
 from carthage import *
 import carthage.libvirt
+from carthage.cloud_init import CloudInitPlugin
 from carthage.modeling import *
 from carthage.podman import *
 from carthage.oci import *
@@ -15,6 +16,14 @@ from pathlib import Path
 
 root_path = Path(__file__).parent.parent
 assignments_path = root_path/"assignments.yml"
+
+
+class TimezoneCloudInitPlugin(CloudInitPlugin):
+
+    name = "timezone"
+
+    async def apply(self, config):
+        config.user_data["timezone"] = "America/Denver"
 
 
 @inject(model_store=ModelStore, ainjector=AsyncInjector)
@@ -32,6 +41,7 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
         add_provider(podman_container_host, LocalPodmanContainerHost)
         add_provider(persistent_seed_path, assignments_path)
         add_provider(MachineDependency(f'router.{domain}'))
+        add_provider(TimezoneCloudInitPlugin, allow_multiple=True)
 
         @provides('bridge_net')
         class net(NetworkModel):
