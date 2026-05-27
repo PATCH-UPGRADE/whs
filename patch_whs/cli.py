@@ -97,6 +97,56 @@ def shell_join(argv: list[str]) -> str:
     return " ".join(shlex.quote(arg) for arg in argv)
 
 
+def ensure_windows_nested_virtualization() -> None:
+    if sys.platform != "win32":
+        return
+
+    wslconfig_path = Path.home() / ".wslconfig"
+    if wslconfig_path.exists():
+        content = wslconfig_path.read_text(encoding="utf-8")
+    else:
+        content = ""
+
+    lines = content.splitlines()
+    if not lines:
+        print(
+            f"whs: adding nestedVirtualization=true to {wslconfig_path}",
+            file=sys.stderr,
+        )
+        wslconfig_path.write_text("[wsl2]\nnestedVirtualization=true\n", encoding="utf-8")
+        return
+
+    in_wsl2 = False
+    saw_wsl2 = False
+    insert_at = len(lines)
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            if in_wsl2:
+                insert_at = index
+                break
+            in_wsl2 = stripped.casefold() == "[wsl2]"
+            saw_wsl2 = saw_wsl2 or in_wsl2
+            continue
+        if in_wsl2 and stripped and not stripped.startswith(("#", ";")):
+            key = stripped.split("=", 1)[0].strip()
+            if key.casefold() == "nestedvirtualization":
+                return
+
+    if saw_wsl2:
+        lines.insert(insert_at, "nestedVirtualization=true")
+    else:
+        if lines[-1].strip():
+            lines.append("")
+        lines.extend(["[wsl2]", "nestedVirtualization=true"])
+
+    print(
+        f"whs: adding nestedVirtualization=true to {wslconfig_path}",
+        file=sys.stderr,
+    )
+    wslconfig_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def run_podman_command(argv: list[str], capture_output: bool = False) -> subprocess.CompletedProcess[str]:
     try:
         return subprocess.run(
@@ -116,6 +166,7 @@ def run_podman_command(argv: list[str], capture_output: bool = False) -> subproc
 
 
 def handle_start(args: argparse.Namespace) -> int:
+    ensure_windows_nested_virtualization()
     run_podman_command(["podman", "pull", args.image])
     labels = inspect_image_labels(args.image)
     label_name = DEVELOP_LABEL if args.develop else RUN_LABEL
