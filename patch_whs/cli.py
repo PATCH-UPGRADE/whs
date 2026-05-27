@@ -13,6 +13,9 @@ from typing import Mapping
 DEFAULT_IMAGE = "ghcr.io/patch-upgrade/whs:latest"
 RUN_LABEL = "run_whs"
 DEVELOP_LABEL = "develop_whs"
+WINDOWS_STRIP_ARGS = {
+    "--group-add=keep-groups",
+}
 VARIABLE_PATTERN = re.compile(r"\$(\w+)|\$\{([^}]+)\}")
 
 
@@ -95,6 +98,12 @@ def build_runtime_options(args: argparse.Namespace) -> list[str]:
 
 def shell_join(argv: list[str]) -> str:
     return " ".join(shlex.quote(arg) for arg in argv)
+
+
+def strip_windows_command_args(argv: list[str]) -> list[str]:
+    if sys.platform != "win32":
+        return argv
+    return [arg for arg in argv if arg not in WINDOWS_STRIP_ARGS]
 
 
 def ensure_windows_nested_virtualization() -> None:
@@ -182,7 +191,7 @@ def handle_start(args: argparse.Namespace) -> int:
             "NAME": args.name,
         },
     )
-    argv = parse_command(expanded_command)
+    argv = strip_windows_command_args(parse_command(expanded_command))
     run_podman_command(argv)
     return 0
 
