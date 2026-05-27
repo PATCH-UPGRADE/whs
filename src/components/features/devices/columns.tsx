@@ -124,9 +124,9 @@ export const columns: ColumnDef<Device>[] = [
           display: data.display,
           image_id: data.image_id,
           dhcp: data.dhcp,
-          mac_address: data.mac_address,
-          ipv4_manual: data.ipv4_manual,
-          gateway: data.gateway,
+          mac_address: data.mac_address ?? undefined,
+          ipv4_manual: data.ipv4_manual ?? undefined,
+          gateway: data.gateway ?? undefined,
           dns_servers: data.dns_servers,
         },
       });
