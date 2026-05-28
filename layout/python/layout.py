@@ -7,7 +7,7 @@ from carthage.oci import *
 from carthage.network import V4Config
 from carthage.systemd import SystemdNetworkModelMixin
 from carthage_base import *
-from .images import WhsBaseImage, WhsRouter, whs_vm_image
+from .images import WhsRouter
 from .web_backend import web_server_key
 from .models import ModelStore
 from pathlib import Path
@@ -28,7 +28,7 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
     class layout(CarthageLayout):
         layout_name = 'whs'
         domain = 'whs.local'
-        from .images import WhsBaseImage, WhsRouter, whs_vm_image
+        from .images import WhsRouter
         add_provider(podman_container_host, LocalPodmanContainerHost)
         add_provider(persistent_seed_path, assignments_path)
         add_provider(MachineDependency(f'router.{domain}'))
@@ -81,11 +81,7 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
             device_gateway = device.gateway
             device_dns_servers = device.dns_servers
             device_image = model_store.get_device_image(device)
-            vm_image = (
-                dependency_quote(Path(config.vm_image_dir)/"images" / device_image.name)
-                if device_image is not None
-                else whs_vm_image
-            )
+            vm_image = dependency_quote(Path(config.vm_image_dir)/"images" / device_image.name)
 
             @dynamic_name(device.name) # TODO: Should we do something to prevent duplicate machine names?
             class whs_vm(MachineModel):
