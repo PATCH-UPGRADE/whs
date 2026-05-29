@@ -13,9 +13,8 @@ from typing import Mapping
 DEFAULT_IMAGE = "ghcr.io/patch-upgrade/whs:latest"
 RUN_LABEL = "run_whs"
 DEVELOP_LABEL = "develop_whs"
-WINDOWS_STRIP_ARGS = {
-    "--group-add=keep-groups",
-}
+PODMAN_REMOTE_STRIP_ARGS = {"--group-add=keep-groups"}
+PODMAN_REMOTE_PLATFORMS = {"darwin", "win32"}
 VARIABLE_PATTERN = re.compile(r"\$(\w+)|\$\{([^}]+)\}")
 
 
@@ -64,6 +63,8 @@ def inspect_image_labels(image: str) -> dict[str, str]:
         raise WhsError(f"podman inspect returned an unexpected payload for image {image!r}")
 
     config = image_info.get("Config")
+    if not isinstance(config, dict):
+        raise WhsError(f"image {image!r} is missing Config metadata")
 
     labels = config.get("Labels")
     if labels is None:
@@ -100,10 +101,10 @@ def shell_join(argv: list[str]) -> str:
     return " ".join(shlex.quote(arg) for arg in argv)
 
 
-def strip_windows_command_args(argv: list[str]) -> list[str]:
-    if sys.platform != "win32":
+def strip_podman_remote_command_args(argv: list[str]) -> list[str]:
+    if sys.platform not in PODMAN_REMOTE_PLATFORMS:
         return argv
-    return [arg for arg in argv if arg not in WINDOWS_STRIP_ARGS]
+    return [arg for arg in argv if arg not in PODMAN_REMOTE_STRIP_ARGS]
 
 
 def ensure_windows_nested_virtualization() -> None:
@@ -118,16 +119,14 @@ def ensure_windows_nested_virtualization() -> None:
 
     lines = content.splitlines()
     if not lines:
-        print(
-            f"whs: adding nestedVirtualization=true to {wslconfig_path}",
-            file=sys.stderr,
-        )
+        print(f"whs: adding nestedVirtualization=true to {wslconfig_path}", file=sys.stderr)
         wslconfig_path.write_text("[wsl2]\nnestedVirtualization=true\n", encoding="utf-8")
         return
 
     in_wsl2 = False
     saw_wsl2 = False
     insert_at = len(lines)
+
     for index, line in enumerate(lines):
         stripped = line.strip()
         if stripped.startswith("[") and stripped.endswith("]"):
@@ -137,10 +136,13 @@ def ensure_windows_nested_virtualization() -> None:
             in_wsl2 = stripped.casefold() == "[wsl2]"
             saw_wsl2 = saw_wsl2 or in_wsl2
             continue
-        if in_wsl2 and stripped and not stripped.startswith(("#", ";")):
-            key = stripped.split("=", 1)[0].strip()
-            if key.casefold() == "nestedvirtualization":
-                return
+
+        if not in_wsl2 or not stripped or stripped.startswith(("#", ";")):
+            continue
+
+        key = stripped.split("=", 1)[0].strip()
+        if key.casefold() == "nestedvirtualization":
+            return
 
     if saw_wsl2:
         lines.insert(insert_at, "nestedVirtualization=true")
@@ -149,10 +151,7 @@ def ensure_windows_nested_virtualization() -> None:
             lines.append("")
         lines.extend(["[wsl2]", "nestedVirtualization=true"])
 
-    print(
-        f"whs: adding nestedVirtualization=true to {wslconfig_path}",
-        file=sys.stderr,
-    )
+    print(f"whs: adding nestedVirtualization=true to {wslconfig_path}", file=sys.stderr)
     wslconfig_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -191,7 +190,7 @@ def handle_start(args: argparse.Namespace) -> int:
             "NAME": args.name,
         },
     )
-    argv = strip_windows_command_args(parse_command(expanded_command))
+    argv = strip_podman_remote_command_args(parse_command(expanded_command))
     run_podman_command(argv)
     return 0
 
