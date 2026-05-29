@@ -1,4 +1,4 @@
-FROM ghcr.io/hadron/carthage-libvirt:latest-aarch64
+FROM ghcr.io/hadron/carthage-libvirt:latest
 RUN --mount=type=tmpfs,target=/var/lib/apt/lists \
     --mount=type=tmpfs,target=/var/cache/apt \
     apt update && apt install -y qemu-system-arm qemu-system-x86 qemu-efi-aarch64
