@@ -1,6 +1,12 @@
 name: Build container image
 description: Download the dist artifact, unpack it, and build the Containerfile with podman.
 
+inputs:
+  image_tag:
+    description: Local image tag to build.
+    required: false
+    default: whs:latest
+
 runs:
   using: composite
   steps:
@@ -21,4 +27,4 @@ runs:
 
     - name: Build container image
       shell: bash
-      run: podman build -f Containerfile -t whs:latest .
+      run: podman build -f Containerfile -t "${{ inputs.image_tag }}" .
