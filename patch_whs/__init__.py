@@ -1,0 +1,2 @@
+"""Patch WHS CLI package."""
+

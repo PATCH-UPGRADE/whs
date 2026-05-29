@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "patch_whs"
+version = "0.1.0"
+description = "CLI for launching the Patch WHS container image"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE.md"}
+authors = [
+  {name = "Patch Upgrade"},
+]
+dependencies = []
+
+[project.scripts]
+whs = "patch_whs.cli:main"
+
+[tool.setuptools]
+packages = ["patch_whs"]
