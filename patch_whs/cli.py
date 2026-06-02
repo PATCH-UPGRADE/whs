@@ -173,7 +173,23 @@ def run_podman_command(argv: list[str], capture_output: bool = False) -> subproc
         raise WhsError(f"command failed: {' '.join(argv)}{suffix}") from exc
 
 
+def ensure_podman_ready() -> None:
+    '''
+    Ensure that Podman is installed & the default machine is rootful on MacOS/Windows
+    '''
+    if sys.platform in PODMAN_REMOTE_PLATFORMS:
+        result = run_podman_command(['podman', 'machine', 'inspect'],
+                                    capture_output=True)
+        machine_info = json.loads(result.stdout)
+        if machine_info and not machine_info[0].get("Rootful"):
+            raise WhsError(
+                "A rootful podman machine is required to run WHS. \n"
+                "Run 'podman machine set --rootful'")
+    return
+
+
 def handle_start(args: argparse.Namespace) -> int:
+    ensure_podman_ready()
     ensure_windows_nested_virtualization()
     run_podman_command(["podman", "pull", args.image])
     labels = inspect_image_labels(args.image)
