@@ -37,6 +37,17 @@ def test_model_store_saves_into_temp_state_dir(model_store, state_dir: Path):
     assert "tester02" in saved
 
 
+def test_vm_image_check_pending_updates_and_saves(model_store, state_dir: Path):
+    image = model_store.vm_images["debian_arm"]
+    image_dir = state_dir / "vm" / "images"
+    image_dir.mkdir(parents=True, exist_ok=True)
+    (image_dir / image.name).write_bytes(b"image")
+
+    assert image.check_pending(image_dir, model_store) is False
+    assert model_store.vm_images["debian_arm"].pending is False
+    assert "pending: false" in (state_dir / "model_store" / "vm_images.yml").read_text()
+
+
 def _add_container_export_data(model_store):
     image = ContainerImage(
         id="nginx_latest",

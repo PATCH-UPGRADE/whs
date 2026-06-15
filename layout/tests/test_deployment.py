@@ -1,7 +1,10 @@
 import asyncio
 
+from carthage import InjectionKey, Machine
+from carthage.dependency_injection.base import InjectionFailed
 from carthage.pytest import TestTiming, async_test
 from httpx import ASGITransport, AsyncClient
+import pytest
 
 
 DEPLOYMENT_TEST_TIMEOUT = 900.0
@@ -45,3 +48,13 @@ async def test_deploy_endpoint_wires_through(app):
     assert status["failures"] == []
     assert status["dependency_failures"] == []
     assert status["successes"]
+
+
+def test_layout_vm_image_factory_raises_when_pending(layout, loop):
+    with pytest.raises(InjectionFailed) as excinfo:
+        loop.run_until_complete(
+            layout.ainjector.get_instance_async(InjectionKey(Machine, host="tester01"))
+        )
+
+    assert isinstance(excinfo.value.__cause__, FileNotFoundError)
+    assert "VM image not present" in str(excinfo.value.__cause__)
