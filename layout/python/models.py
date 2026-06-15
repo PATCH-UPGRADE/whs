@@ -1,5 +1,6 @@
-from typing import Literal, Optional, TypeVar
-from pydantic import BaseModel, ConfigDict, Field, IPvAnyAddress
+from functools import wraps
+from typing import Any, Callable, Literal, Optional, TypeVar
+from pydantic import BaseModel, ConfigDict, Field, IPvAnyAddress, model_serializer, model_validator
 from pathlib import Path
 import yaml
 from uuid import uuid4
@@ -23,6 +24,19 @@ default_model_config = ConfigDict(
         validate_assignment=True,
     )
 
+
+def export_serializer(fn: Callable[..., dict[str, Any]]) -> Callable[..., dict[str, Any]]:
+    @wraps(fn)
+    def wrapped(self, handler, info):
+        data = handler(self)
+        context = getattr(info, 'context', None) or {}
+        store = context.get('store')
+        if context.get('format') != 'export' or store is None:
+            return data
+        return fn(self, data, store)
+
+    return wrapped
+
 class IdentifiedModel(BaseModel):
     id: str
 
@@ -36,6 +50,13 @@ class VmImage(IdentifiedModel):
     description: str = Field(description='Description or tags', default='')
     version: str = Field(description='Version name or number or both', default='', max_length=24)
     type: Literal['qcow2', 'raw'] = Field(description='Type of image being used, qcow2 or raw', default='raw')
+
+    @model_serializer(mode='wrap')
+    @export_serializer
+    def serialize_for_export(self, data, store):
+        del store
+        data.pop('id', None)
+        return data
 
 class ContainerImage(IdentifiedModel):
     model_config = default_model_config
@@ -70,12 +91,55 @@ class Device(IdentifiedModel):
     gateway: Optional[IPvAnyAddress] = Field(description='Default gateway', default=None)
     dns_servers: list[IPvAnyAddress] = Field(default_factory=list)
 
+    @model_serializer(mode='wrap')
+    @export_serializer
+    def serialize_for_export(self, data, store):
+        data.pop('id', None)
+        image = store.get_device_image(self)
+        if image:
+            data.pop('image_id', None)
+            if isinstance(image, ContainerImage):
+                data['image'] = image.name
+            else:
+                data['image'] = {
+                    'id': image.id,
+                    'name': image.name,
+                    'type': image.type
+                }
+        return data
+
+    @model_validator(mode='before')
+    @classmethod
+    def import_from_yaml(cls, obj, info):
+        if not isinstance(obj, dict):
+            return obj
+
+        data = dict(obj)
+        try:
+            format = info.context['format']
+            store = info.context['store']
+        except (KeyError, AttributeError, TypeError):
+            return data
+        if format != 'export':
+            return data
+        if 'image' in data:
+            data['image_id'] = store.resolve_imported_image(device_type=data['type'], image=data['image'])
+            del data['image']
+        return data
+    
 class Pcap(IdentifiedModel):
     model_config = default_model_config
     id: str = Field(default_factory=lambda: uuid4().hex)
 
     name: str = Field(description='Name of the pcap', min_length=3, max_length=20)
     description: str = Field(description='Description or tags', default='')
+
+    @model_serializer(mode='wrap')
+    @export_serializer
+    def serialize_for_export(self, data, store):
+        del store
+        data.pop('id', None)
+        return data
 
 class ModelStore(BaseModel):
     model_config = default_model_config
@@ -125,6 +189,36 @@ class ModelStore(BaseModel):
                 default_flow_style=False,
             )
 
+    def resolve_imported_image(self, device_type: str, image: Any) -> str:
+        if device_type == 'container':
+            if not isinstance(image, str):
+                raise ValueError(f'Container device image must be a name string, got {type(image).__name__}')
+            for container_image in self.container_images.values():
+                if container_image.name == image:
+                    return container_image.id
+            synthesized_image = ContainerImage(name=image)
+            self.container_images[synthesized_image.id] = synthesized_image
+            return synthesized_image.id
+
+        if device_type != 'vm':
+            raise ValueError(f'Unsupported device type {device_type!r}')
+
+        if not isinstance(image, dict):
+            raise ValueError(f'VM device image must be a mapping, got {type(image).__name__}')
+
+        image_id = image.get('id')
+        if image_id is not None:
+            if image_id in self.vm_images:
+                return image_id
+            raise ValueError(f'No vm image with id {image_id!r} exists in the model store')
+
+        image_name = image.get('name')
+        image_type = image.get('type')
+        for vm_image in self.vm_images.values():
+            if vm_image.name == image_name and vm_image.type == image_type:
+                return vm_image.id
+        raise ValueError(f'No vm image matching name={image_name!r} type={image_type!r} exists in the model store')
+
     def load(self) -> 'ModelStore':
         '''Loads models from yaml'''
         self.vm_images = self._load_model_file(self.model_dir / 'vm_images.yml', VmImage)
@@ -142,6 +236,73 @@ class ModelStore(BaseModel):
         self._save_model_file(self.model_dir / 'container_images.yml', self.container_images)
         self._save_model_file(self.model_dir / 'devices.yml', self.devices)
         self._save_model_file(self.model_dir / 'pcaps.yml', self.pcaps)
+        return self
+
+    def export_yaml(self) -> str:
+        self.validate_references()
+        return yaml.safe_dump(
+            self.model_dump(
+                mode='json',
+                context={'format': 'export', 'store': self},
+                exclude={'container_images', 'model_dir'},
+            ),
+            sort_keys=False,
+            default_flow_style=False,
+        )
+
+    def import_yaml(self, yaml_data: str) -> 'ModelStore':
+        raw_data = yaml.safe_load(yaml_data)
+        if raw_data is None:
+            return self
+        if not isinstance(raw_data, dict):
+            raise ValueError('Expected exported model store YAML to be a mapping')
+
+        vm_images = raw_data.get('vm_images', {})
+        if not isinstance(vm_images, dict):
+            raise ValueError('Expected vm_images to be a mapping')
+        for image_id, payload in vm_images.items():
+            if not isinstance(payload, dict):
+                raise ValueError(f'Expected vm_images[{image_id!r}] to be a mapping')
+            self.vm_images[image_id] = VmImage.model_validate(
+                {'id': image_id, **payload},
+                context={'format': 'export', 'store': self},
+            )
+
+        container_images = raw_data.get('container_images', {})
+        if not isinstance(container_images, dict):
+            raise ValueError('Expected container_images to be a mapping')
+        for image_id, payload in container_images.items():
+            if not isinstance(payload, dict):
+                raise ValueError(f'Expected container_images[{image_id!r}] to be a mapping')
+            self.container_images[image_id] = ContainerImage.model_validate(
+                {'id': image_id, **payload},
+                context={'format': 'export', 'store': self},
+            )
+
+        devices = raw_data.get('devices', {})
+        if not isinstance(devices, dict):
+            raise ValueError('Expected devices to be a mapping')
+        for device_id, payload in devices.items():
+            if not isinstance(payload, dict):
+                raise ValueError(f'Expected devices[{device_id!r}] to be a mapping')
+            record = Device.model_validate(
+                {'id': device_id, **payload},
+                context={'format': 'export', 'store': self},
+            )
+            self.devices[record.id] = record
+
+        pcaps = raw_data.get('pcaps', {})
+        if not isinstance(pcaps, dict):
+            raise ValueError('Expected pcaps to be a mapping')
+        for pcap_id, payload in pcaps.items():
+            if not isinstance(payload, dict):
+                raise ValueError(f'Expected pcaps[{pcap_id!r}] to be a mapping')
+            self.pcaps[pcap_id] = Pcap.model_validate(
+                {'id': pcap_id, **payload},
+                context={'format': 'export', 'store': self},
+            )
+
+        self.validate_references()
         return self
 
     def get_device_image(self, device: Device) -> Optional[VmImage | ContainerImage]:

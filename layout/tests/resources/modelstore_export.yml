@@ -1,0 +1,50 @@
+vm_images:
+  debian_arm:
+    name: debian-13-nocloud-arm64.qcow2
+    description: Debian Trixie ARM nocloud
+    version: Trixie
+    type: qcow2
+  sdr_img:
+    name: sdr_img
+    description: Siemens Digital Radiography
+    version: v13.37
+    type: qcow2
+devices:
+  tester01:
+    name: tester01
+    description: Test device information
+    type: vm
+    cloud_init: true
+    architecture: aarch64
+    cpus: 4
+    memory: 4096
+    disk: 20
+    disk_controller: virtio
+    display: false
+    dhcp: true
+    mac_address: null
+    ipv4_manual: null
+    gateway: null
+    dns_servers: []
+    image:
+      id: debian_arm
+      name: debian-13-nocloud-arm64.qcow2
+      type: qcow2
+  container01:
+    name: container01
+    description: Container test device
+    type: container
+    cloud_init: true
+    architecture: x86_64
+    cpus: 2
+    memory: 4096
+    disk: 20480
+    disk_controller: virtio
+    display: false
+    dhcp: true
+    mac_address: null
+    ipv4_manual: null
+    gateway: null
+    dns_servers: []
+    image: nginx:latest
+pcaps: {}

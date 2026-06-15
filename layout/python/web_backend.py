@@ -8,7 +8,6 @@ from pathlib import Path
 import shutil
 import struct
 from typing import Annotated, get_args
-import yaml
 from fastapi.responses import JSONResponse, Response
 import uvicorn
 import libvirt
@@ -144,14 +143,8 @@ async def deployment_status(request: Request) -> FrontendDeploymentResult | None
 
 @api_v1.get('/models/export')
 async def export_models(model_store:model_store_dependency) -> Response:
-    content = yaml.safe_dump(
-        model_store.model_dump(mode='json', exclude={'model_dir'}),
-        sort_keys=False,
-        default_flow_style=False,
-    )
-
     return Response(
-        content=content,
+        content=model_store.export_yaml(),
         media_type='application/x-yaml',
         headers={'Content-Disposition': 'attachment; filename="whs-models.yaml"'},
     )
