@@ -71,6 +71,13 @@ class VmImage(IdentifiedModel):
         data.pop('id', None)
         return data
 
+    def check_pending(self, directory: Path, model_store: 'ModelStore') -> bool:
+        is_pending = not (Path(directory) / self.name).exists()
+        if self.pending != is_pending:
+            self.pending = is_pending
+            model_store.save()
+        return self.pending
+
     @model_validator(mode='before')
     @classmethod
     @export_validator
