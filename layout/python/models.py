@@ -210,14 +210,23 @@ class ModelStore(BaseModel):
         if image_id is not None:
             if image_id in self.vm_images:
                 return image_id
-            raise ValueError(f'No vm image with id {image_id!r} exists in the model store')
 
         image_name = image.get('name')
         image_type = image.get('type')
-        for vm_image in self.vm_images.values():
-            if vm_image.name == image_name and vm_image.type == image_type:
-                return vm_image.id
-        raise ValueError(f'No vm image matching name={image_name!r} type={image_type!r} exists in the model store')
+        if image_name is not None and image_type is not None:
+            for vm_image in self.vm_images.values():
+                if vm_image.name == image_name and vm_image.type == image_type:
+                    return vm_image.id
+        elif image_id is None:
+            raise ValueError('VM image import requires id or both name and type')
+
+        synthesized_image = VmImage(
+            id=image_id if image_id is not None else uuid4().hex,
+            name=image_name,
+            type=image_type,
+        )
+        self.vm_images[synthesized_image.id] = synthesized_image
+        return synthesized_image.id
 
     def load(self) -> 'ModelStore':
         '''Loads models from yaml'''

@@ -86,3 +86,27 @@ def test_model_store_import_yaml_round_trips_and_merges_existing_data(model_stor
     assert set(round_tripped["devices"]) == {"tester01", "tester02", "container01"}
     assert "id" not in round_tripped["devices"]["tester01"]
     assert round_tripped["devices"]["container01"]["image"] == "nginx:latest"
+
+
+def test_model_store_import_yaml_synthesizes_missing_vm_image():
+    imported_store = ModelStore()
+
+    imported_store.import_yaml(
+        """
+devices:
+  tester03:
+    name: tester03
+    description: Third test device
+    type: vm
+    image:
+      id: imported_vm
+      name: imported.qcow2
+      type: qcow2
+pcaps: {}
+vm_images: {}
+"""
+    )
+
+    assert imported_store.devices["tester03"].image_id == "imported_vm"
+    assert imported_store.vm_images["imported_vm"].name == "imported.qcow2"
+    assert imported_store.vm_images["imported_vm"].type == "qcow2"
