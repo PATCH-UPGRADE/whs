@@ -164,7 +164,20 @@ async def upload_image(request:Request, model_store:model_store_dependency, file
     if not extension in get_args(VmImage.model_fields['type'].annotation):
         raise HTTPException(status_code=400, detail=f"Invalid extension type. Supported extensions are [{VmImage.type}]")
 
-    image_model = VmImage(name=filename, type=extension, description=description, version=version)
+    existing_ids = set(model_store.vm_images)
+    image_model = model_store.resolve_image(
+        device_type='vm',
+        image={
+            'name': filename,
+            'description': description,
+            'version': version,
+            'type': extension,
+        },
+    )
+    if not image_model.pending:
+        raise HTTPException(status_code=400, detail="Image already exists")
+    image_model.description = description
+    image_model.version = version
 
     config = await get_ainjector(request)(ConfigLayout)
     vm_image_path = f"{config.vm_image_dir}/images"
@@ -175,11 +188,13 @@ async def upload_image(request:Request, model_store:model_store_dependency, file
         with open(file_path, 'wb') as buffer:
             shutil.copyfileobj(file.file, buffer)
     except Exception:
+        if image_model.id not in existing_ids:
+            model_store.vm_images.pop(image_model.id, None)
         raise HTTPException(status_code=500, detail="Something went wrong!")
     finally:
         await file.close()
 
-    model_store.vm_images[image_model.id] = image_model
+    image_model.pending = False
     model_store.save()
 
     return JSONResponse(content = {

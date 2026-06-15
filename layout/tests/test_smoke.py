@@ -1,9 +1,10 @@
+import io
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 import yaml
 
-from python.models import ContainerImage, Device, ModelStore
+from python.models import ContainerImage, Device, ModelStore, VmImage
 
 
 def test_model_store_is_seeded(model_store):
@@ -110,3 +111,68 @@ vm_images: {}
     assert imported_store.devices["tester03"].image_id == "imported_vm"
     assert imported_store.vm_images["imported_vm"].name == "imported.qcow2"
     assert imported_store.vm_images["imported_vm"].type == "qcow2"
+
+
+def test_model_store_import_yaml_ignores_pending_for_new_vm_images():
+    imported_store = ModelStore()
+
+    imported_store.import_yaml(
+        """
+vm_images:
+  imported_vm:
+    name: imported.qcow2
+    description: Imported image
+    version: "v1"
+    type: qcow2
+    pending: false
+devices: {}
+pcaps: {}
+"""
+    )
+
+    assert imported_store.vm_images["imported_vm"].pending is True
+
+
+def test_upload_image_reuses_pending_vm_image(app, model_store):
+    pending_image = VmImage(
+        id="pending_vm",
+        name="upload-test.qcow2",
+        description="Imported placeholder",
+        version="v0",
+        type="qcow2",
+        pending=True,
+    )
+    model_store.vm_images[pending_image.id] = pending_image
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/images/upload",
+        data={"description": "Uploaded image", "version": "v1"},
+        files={"file": ("upload-test.qcow2", io.BytesIO(b"image-bytes"), "application/octet-stream")},
+    )
+
+    assert response.status_code == 200
+    assert model_store.vm_images["pending_vm"].pending is False
+    assert model_store.vm_images["pending_vm"].description == "Uploaded image"
+    assert model_store.vm_images["pending_vm"].version == "v1"
+
+
+def test_upload_image_rejects_existing_non_pending_vm_image(app, model_store):
+    existing_image = VmImage(
+        id="existing_vm",
+        name="existing-test.qcow2",
+        description="Existing image",
+        version="v1",
+        type="qcow2",
+        pending=False,
+    )
+    model_store.vm_images[existing_image.id] = existing_image
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/images/upload",
+        data={"description": "Uploaded image", "version": "v2"},
+        files={"file": ("existing-test.qcow2", io.BytesIO(b"image-bytes"), "application/octet-stream")},
+    )
+
+    assert response.status_code == 400
