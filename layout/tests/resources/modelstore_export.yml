@@ -4,11 +4,13 @@ vm_images:
     description: Debian Trixie ARM nocloud
     version: Trixie
     type: qcow2
+    pending: true
   sdr_img:
     name: sdr_img
     description: Siemens Digital Radiography
     version: v13.37
     type: qcow2
+    pending: true
 devices:
   tester01:
     name: tester01
