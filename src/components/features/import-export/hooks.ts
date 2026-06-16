@@ -1,4 +1,9 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { carthageFetcherUpload } from "@/fetcher";
+import type { ImportModelsResponse } from "./types";
+
 const EXPORT_MODELS_PATH = "/models/export";
+const IMPORT_MODELS_PATH = "/models/import";
 
 const getExportModelsUrl = (): string => {
   if (import.meta.env.DEV) {
@@ -18,4 +23,25 @@ export const useExportModels = () => {
   return () => {
     window.location.href = getExportModelsUrl();
   };
+};
+
+export const useImportModels = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: FormData) =>
+      carthageFetcherUpload<ImportModelsResponse>(IMPORT_MODELS_PATH, {
+        method: "post",
+        body: data,
+      }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["devices"] });
+      queryClient.invalidateQueries({ queryKey: ["images"] });
+      queryClient.invalidateQueries({ queryKey: ["pcaps"] });
+      return data;
+    },
+    onError: (error) => {
+      console.error(error);
+    },
+  });
 };
