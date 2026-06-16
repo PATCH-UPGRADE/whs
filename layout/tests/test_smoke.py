@@ -6,6 +6,10 @@ import yaml
 
 from python.models import ContainerImage, Device, ModelStore, VmImage
 
+'''
+Unit tests that do not require setting up a fastapi server.
+'''
+
 
 def test_model_store_is_seeded(model_store):
     assert "tester01" in model_store.devices

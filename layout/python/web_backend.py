@@ -11,8 +11,10 @@ from typing import Annotated, get_args
 from fastapi.responses import JSONResponse, Response
 import uvicorn
 import libvirt
+import yaml
 from fastapi import FastAPI, APIRouter, Depends, Form, HTTPException, Request, File, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
+from pydantic import ValidationError
 from starlette.requests import HTTPConnection
 from carthage import (
     AsyncInjector,
@@ -148,6 +150,24 @@ async def export_models(model_store:model_store_dependency) -> Response:
         media_type='application/x-yaml',
         headers={'Content-Disposition': 'attachment; filename="whs-models.yaml"'},
     )
+
+@api_v1.post('/models/import')
+async def import_models(
+    request: Request,
+    model_store: model_store_dependency,
+    file: UploadFile = File(...),
+) -> JSONResponse:
+    try:
+        yaml_data = (await file.read()).decode('utf-8')
+        model_store.import_yaml(yaml_data)
+        model_store.save()
+    except (UnicodeDecodeError, ValidationError, ValueError, yaml.YAMLError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    finally:
+        await file.close()
+
+    asyncio.ensure_future(regenerate_layout(request))
+    return JSONResponse(content={"message": "Success"})
 
 web_server_key = InjectionKey('viper_whs.webserver')
 web_app_key = InjectionKey('viper_whs.app')

@@ -6,6 +6,10 @@ from carthage.pytest import TestTiming, async_test
 from httpx import ASGITransport, AsyncClient
 import pytest
 
+'''
+Integration tests that require sudo/CAP_NET_ADMIN and fully instantiate networks, machines and containers.
+'''
+
 
 DEPLOYMENT_TEST_TIMEOUT = 900.0
 
