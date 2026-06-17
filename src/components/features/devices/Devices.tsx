@@ -149,16 +149,16 @@ export const DeviceCreateUpdateModal = ({
 
               <FormField
                 control={form.control}
-                name="image_id"
+                name="vm_image_id"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Image ID</FormLabel>
                     <FormDescription>
-                      TODO: If no ID is provided a default image may be used
+                      The id of an existing VM image
                     </FormDescription>
                     <FormControl>
                       <Select
-                        value={field.value}
+                        value={field.value ?? ""}
                         onValueChange={field.onChange}
                       >
                         <SelectTrigger className="w-full">
@@ -589,7 +589,8 @@ export const DevicesContainer = () => {
       disk: 20480, // Megabytes
       disk_controller: "virtio",
       display: false,
-      image_id: "",
+      vm_image_id: null,
+      container_image_id: null,
       dhcp: true,
       mac_address: undefined,
       ipv4_manual: undefined,

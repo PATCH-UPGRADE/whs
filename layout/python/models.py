@@ -107,7 +107,7 @@ class ContainerImage(IdentifiedModel):
     model_config = default_model_config
     id: str = Field(default_factory=lambda: uuid4().hex)
 
-    name: str = Field(description='Name of the image', min_length=1, max_length=64)
+    name: str = Field(description='Name of the image. This should take the shape of an image:tag or image URI.', min_length=1, max_length=64)
     description: str = Field(description='Description or tags', default='')
     version: float = Field(default=1.00)
 
@@ -117,7 +117,7 @@ class Device(IdentifiedModel):
 
     name: str = Field(description='Name of the device', min_length=3, max_length=20)
     description: str = Field(description='Description or tags', default='')
-    type: Literal['vm', 'container'] = Field(description='Type of device, vm or container. Only vm is supported today.', default='vm')
+    type: Literal['vm', 'container'] = Field(description='Type of device: vm or container', default='vm')
     cloud_init: bool = Field(description='Use cloud init', default=True)
 
     architecture: Literal['x86_64', 'aarch64'] = Field(description='Architecture of the device, x86_64 or aarch64', default='x86_64')
@@ -127,8 +127,8 @@ class Device(IdentifiedModel):
     disk_controller: Literal['virtio', 'sata'] = Field(description='Controller used for disk', default='virtio')
     display: bool = Field(description='Display needed', default=False)
 
-    # If no image_id is provided, maybe set a default image and/or allow for pulling from a container registry in the future
-    image_id: Optional[str] = Field(description='Image id to use for the machine', default=None)
+    vm_image_id: Optional[str] = Field(description='The id of an existing VM image', default=None)
+    container_image_id: Optional[str] = Field(description='The id of an existing container image. Alternatively, specifying an image:tag or image URI will create the image for you.', default=None)
 
     dhcp: bool = Field(description='Leave True to use DHCP. If a static is desired, set this to False and set ipv4_manual, gateway, and dns_servers.', default=True)
     mac_address: Optional[str] = Field(description='Hardware MAC address', default=None, pattern=r"^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$")
@@ -140,17 +140,17 @@ class Device(IdentifiedModel):
     @export_serializer
     def serialize_for_export(self, data, store):
         data.pop('id', None)
-        image = store.get_device_image(self)
-        if image:
-            data.pop('image_id', None)
-            if isinstance(image, ContainerImage):
-                data['image'] = image.name
-            else:
-                data['image'] = {
-                    'id': image.id,
-                    'name': image.name,
-                    'type': image.type
-                }
+        vm_image, container_image = store.get_device_images(self)
+        if vm_image:
+            data.pop('vm_image_id', None)
+            data['vm_image'] = {
+                'id': vm_image.id,
+                'name': vm_image.name,
+                'type': vm_image.type
+            }
+        if container_image:
+            data.pop('container_image_id', None)
+            data['container_image'] = container_image.name
         return data
 
     @model_validator(mode='before')
@@ -161,9 +161,12 @@ class Device(IdentifiedModel):
             return obj
 
         data = dict(obj)
-        if 'image' in data:
-            data['image_id'] = store.resolve_image(device_type=data['type'], image=data['image']).id
-            del data['image']
+        if 'vm_image' in data:
+            data['vm_image_id'] = store.resolve_image(device_type='vm', image=data['vm_image']).id
+            del data['vm_image']
+        if 'container_image' in data:
+            data['container_image_id'] = store.resolve_image(device_type='container', image=data['container_image']).id
+            del data['container_image']
         return data
     
 class Pcap(IdentifiedModel):
@@ -361,25 +364,33 @@ class ModelStore(BaseModel):
         self.validate_references()
         return self
 
-    def get_device_image(self, device: Device) -> Optional[VmImage | ContainerImage]:
-        '''Helper to get the actual image for a specific device.'''
-        if not device.image_id:
+    def get_device_vm_image(self, device: Device) -> Optional[VmImage]:
+        '''Helper to get the actual VM image for a specific device.'''
+        if not device.vm_image_id:
             return None
+        return self.vm_images.get(device.vm_image_id)
 
-        match device.type:
-            case 'vm':
-                return self.vm_images.get(device.image_id)
-            case 'container':
-                return self.container_images.get(device.image_id)
-            case _:
-                return None
+    def get_device_container_image(self, device: Device) -> Optional[ContainerImage]:
+        '''Helper to get the actual container image for a specific device.'''
+        if not device.container_image_id:
+            return None
+        return self.container_images.get(device.container_image_id)
+    
+    def get_device_images(self, device: Device) -> tuple[Optional[VmImage], Optional[ContainerImage]]:
+        '''Helper to get actual images for a specific device.'''
+        return self.get_device_vm_image(device), self.get_device_container_image(device)
     
     def validate_references(self):
-        '''Ensures any referenced images actually exist'''
+        '''
+        Ensures any referenced VM images actually exist.
+        Container image models are synthesized if provided on device creation.
+        '''
         for device in self.devices.values():
-            if device.image_id and not self.get_device_image(device):
-                raise ValueError(f"Device {device.name} references a missing image: {device.image_id}")
-
+            if device.vm_image_id and not self.get_device_vm_image(device):
+                raise ValueError(f"Device {device.name} references a VM missing image: {device.vm_image_id}")
+            if device.container_image_id and device.container_image_id not in self.container_images:
+                image = self.resolve_image(device_type="container", image=device.container_image_id)
+                device.container_image_id = image.id
 
 
 # For testing purposes
@@ -394,7 +405,7 @@ if __name__ == '__main__':
         name = 'tester01',
         description = 'Test device information',
         cpus = 4,
-        image_id = test_image.id,
+        vm_image_id = test_image.id,
     )
     test_pcap = Pcap(
         name='test_pcap',
