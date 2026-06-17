@@ -167,9 +167,9 @@ export const DeviceCreateUpdateModal = ({
                         <SelectContent>
                           <SelectGroup>
                             <SelectLabel>Select Image</SelectLabel>
-                            {images?.map(({ id, name }, index) => (
+                            {images?.map(({ id, name, pending }, index) => (
                               <SelectItem value={id} key={index}>
-                                {name}
+                                {pending ? `${name} (pending)` : name}
                               </SelectItem>
                             ))}
                           </SelectGroup>

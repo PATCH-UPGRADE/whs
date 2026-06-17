@@ -8,11 +8,13 @@ from pathlib import Path
 import shutil
 import struct
 from typing import Annotated, get_args
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 import uvicorn
 import libvirt
+import yaml
 from fastapi import FastAPI, APIRouter, Depends, Form, HTTPException, Request, File, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
+from pydantic import ValidationError
 from starlette.requests import HTTPConnection
 from carthage import (
     AsyncInjector,
@@ -141,6 +143,32 @@ async def deployment_status(request: Request) -> FrontendDeploymentResult | None
         return map_deployment_result(result)
     return map_deployment_result(result, running=True)
 
+@api_v1.get('/models/export')
+async def export_models(model_store:model_store_dependency) -> Response:
+    return Response(
+        content=model_store.export_yaml(),
+        media_type='application/x-yaml',
+        headers={'Content-Disposition': 'attachment; filename="whs-models.yaml"'},
+    )
+
+@api_v1.post('/models/import')
+async def import_models(
+    request: Request,
+    model_store: model_store_dependency,
+    file: UploadFile = File(...),
+) -> JSONResponse:
+    try:
+        yaml_data = (await file.read()).decode('utf-8')
+        model_store.import_yaml(yaml_data)
+        model_store.save()
+    except (UnicodeDecodeError, ValidationError, ValueError, yaml.YAMLError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    finally:
+        await file.close()
+
+    asyncio.ensure_future(regenerate_layout(request))
+    return JSONResponse(content={"message": "Success"})
+
 web_server_key = InjectionKey('viper_whs.webserver')
 web_app_key = InjectionKey('viper_whs.app')
 @api_v1.get("/images")
@@ -156,7 +184,20 @@ async def upload_image(request:Request, model_store:model_store_dependency, file
     if not extension in get_args(VmImage.model_fields['type'].annotation):
         raise HTTPException(status_code=400, detail=f"Invalid extension type. Supported extensions are [{VmImage.type}]")
 
-    image_model = VmImage(name=filename, type=extension, description=description, version=version)
+    existing_ids = set(model_store.vm_images)
+    image_model = model_store.resolve_image(
+        device_type='vm',
+        image={
+            'name': filename,
+            'description': description,
+            'version': version,
+            'type': extension,
+        },
+    )
+    if not image_model.pending:
+        raise HTTPException(status_code=400, detail="Image already exists")
+    image_model.description = description
+    image_model.version = version
 
     config = await get_ainjector(request)(ConfigLayout)
     vm_image_path = f"{config.vm_image_dir}/images"
@@ -167,11 +208,13 @@ async def upload_image(request:Request, model_store:model_store_dependency, file
         with open(file_path, 'wb') as buffer:
             shutil.copyfileobj(file.file, buffer)
     except Exception:
+        if image_model.id not in existing_ids:
+            model_store.vm_images.pop(image_model.id, None)
         raise HTTPException(status_code=500, detail="Something went wrong!")
     finally:
         await file.close()
 
-    model_store.vm_images[image_model.id] = image_model
+    image_model.pending = False
     model_store.save()
 
     return JSONResponse(content = {
