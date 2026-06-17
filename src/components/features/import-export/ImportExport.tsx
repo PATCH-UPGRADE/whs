@@ -23,10 +23,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useExportModels, useImportModels } from "./hooks";
-import {
-  type ImportModelsFormValues,
-  importModelsInputSchema,
-} from "./types";
+import { type ImportModelsFormValues, importModelsInputSchema } from "./types";
 
 const ImportModelsModal = ({
   form,
@@ -132,7 +129,11 @@ export const ImportExportContainer = () => {
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-bold">Import / Export</h1>
       <div className="flex flex-wrap gap-3">
-        <Button type="button" className="bg-blue-800" onClick={() => setOpen(true)}>
+        <Button
+          type="button"
+          className="bg-blue-800"
+          onClick={() => setOpen(true)}
+        >
           <UploadIcon />
           Import
         </Button>
