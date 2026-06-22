@@ -80,7 +80,7 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
             device_ipv4 = device.ipv4_manual
             device_gateway = device.gateway
             device_dns_servers = device.dns_servers
-            device_image = model_store.get_device_image(device)
+            device_image = model_store.get_device_vm_image(device)
             image_dir = Path(config.vm_image_dir) / "images"
             if isinstance(device_image, VmImage) and not device_image.check_pending(image_dir, model_store):
                 vm_image = dependency_quote(image_dir / device_image.name)

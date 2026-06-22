@@ -28,7 +28,8 @@ devices:
     ipv4_manual: null
     gateway: null
     dns_servers: []
-    image:
+    container_image_id: null
+    vm_image:
       id: debian_arm
       name: debian-13-nocloud-arm64.qcow2
       type: qcow2
@@ -43,10 +44,11 @@ devices:
     disk: 20480
     disk_controller: virtio
     display: false
+    vm_image_id: null
     dhcp: true
     mac_address: null
     ipv4_manual: null
     gateway: null
     dns_servers: []
-    image: nginx:latest
+    container_image: nginx:latest
 pcaps: {}

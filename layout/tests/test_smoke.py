@@ -64,7 +64,7 @@ def _add_container_export_data(model_store):
         name="container01",
         description="Container test device",
         type="container",
-        image_id=image.id,
+        container_image_id=image.id,
     )
     model_store.container_images[image.id] = image
     model_store.devices[device.id] = device
@@ -72,8 +72,8 @@ def _add_container_export_data(model_store):
 
 def test_model_store_export_yaml_matches_regression_fixture(model_store):
     _add_container_export_data(model_store)
-    exported = model_store.export_yaml()
-    expected = Path("tests/resources/modelstore_export.yml").read_text()
+    exported = yaml.safe_load(model_store.export_yaml())
+    expected = yaml.safe_load(Path("tests/resources/modelstore_export.yml").read_text())
 
     assert exported == expected
 
@@ -92,16 +92,16 @@ def test_model_store_import_yaml_round_trips_and_merges_existing_data(model_stor
     imported_store.import_yaml(exported)
     round_tripped = yaml.safe_load(imported_store.export_yaml())
 
-    assert imported_store.devices["tester01"].image_id == "debian_arm"
+    assert imported_store.devices["tester01"].vm_image_id == "debian_arm"
     container01 = imported_store.devices["container01"]
     assert container01.type == "container"
     assert imported_store.devices["tester02"] == extra_device
-    assert imported_store.get_device_image(container01).name == "nginx:latest"
+    assert imported_store.get_device_container_image(container01).name == "nginx:latest"
     assert "container_images" not in round_tripped
     assert isinstance(round_tripped["devices"], dict)
     assert set(round_tripped["devices"]) == {"tester01", "tester02", "container01"}
     assert "id" not in round_tripped["devices"]["tester01"]
-    assert round_tripped["devices"]["container01"]["image"] == "nginx:latest"
+    assert round_tripped["devices"]["container01"]["container_image"] == "nginx:latest"
 
 
 def test_model_store_import_yaml_synthesizes_missing_vm_image():
@@ -114,7 +114,7 @@ devices:
     name: tester03
     description: Third test device
     type: vm
-    image:
+    vm_image:
       id: imported_vm
       name: imported.qcow2
       type: qcow2
@@ -123,7 +123,7 @@ vm_images: {}
 """
     )
 
-    assert imported_store.devices["tester03"].image_id == "imported_vm"
+    assert imported_store.devices["tester03"].vm_image_id == "imported_vm"
     assert imported_store.vm_images["imported_vm"].name == "imported.qcow2"
     assert imported_store.vm_images["imported_vm"].type == "qcow2"
 

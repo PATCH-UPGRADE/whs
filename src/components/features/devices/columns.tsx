@@ -65,9 +65,14 @@ export const columns: ColumnDef<Device>[] = [
     header: "Display?",
   },
   {
-    accessorKey: "image_id",
-    meta: { title: "image_id" },
-    header: "Image ID",
+    accessorKey: "vm_image_id",
+    meta: { title: "vm_image_id" },
+    header: "VM Image ID",
+  },
+  {
+    accessorKey: "container_image_id",
+    meta: { title: "container_image_id" },
+    header: "Container Image ID",
   },
   {
     accessorKey: "dhcp",
@@ -122,7 +127,8 @@ export const columns: ColumnDef<Device>[] = [
           disk: data.disk,
           disk_controller: data.disk_controller,
           display: data.display,
-          image_id: data.image_id,
+          vm_image_id: data.vm_image_id,
+          container_image_id: data.container_image_id,
           dhcp: data.dhcp,
           mac_address: data.mac_address ?? undefined,
           ipv4_manual: data.ipv4_manual ?? undefined,

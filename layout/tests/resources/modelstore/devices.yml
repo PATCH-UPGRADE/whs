@@ -9,7 +9,7 @@ tester01:
   disk: 20
   disk_controller: virtio
   display: false
-  image_id: debian_arm
+  vm_image_id: debian_arm
   dhcp: true
   mac_address: null
   ipv4_manual: null

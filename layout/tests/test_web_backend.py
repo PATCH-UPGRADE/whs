@@ -97,7 +97,7 @@ devices:
     name: imported01
     description: Imported device
     type: vm
-    image:
+    vm_image:
       id: imported_vm
       name: imported-image.qcow2
       type: qcow2
@@ -111,7 +111,7 @@ devices:
     assert response.json() == {"message": "Success"}
     assert "imported_vm" in model_store.vm_images
     assert "imported_device" in model_store.devices
-    assert model_store.devices["imported_device"].image_id == "imported_vm"
+    assert model_store.devices["imported_device"].vm_image_id == "imported_vm"
 
 
 def test_models_import_invalid_yaml_returns_400(app, monkeypatch):
@@ -158,7 +158,7 @@ devices:
     name: tester-import
     description: Imported device
     type: vm
-    image:
+    vm_image:
       id: debian_arm
       name: debian-13-nocloud-arm64.qcow2
       type: qcow2
