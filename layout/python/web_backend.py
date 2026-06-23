@@ -90,6 +90,12 @@ api_v1 = APIRouter(prefix="/api/v1")
 async def get_devices(model_store:model_store_dependency)-> list[Device]:
     return list(model_store.devices.values())
 
+@api_v1.get("/devices/{device_id}")
+async def get_device(device_id:str, model_store:model_store_dependency) -> Device:
+    if not device_id in model_store.devices:
+        raise HTTPException(status_code=404, detail="Device not found")
+    return model_store.devices[device_id]
+
 @api_v1.post('/devices')
 async def create_device(device:Device, request:Request, model_store:model_store_dependency):
     model_store.devices[device.id] = device

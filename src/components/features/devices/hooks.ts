@@ -3,6 +3,8 @@ import { carthageFetcher } from "@/fetcher";
 import type { Device, DeviceFormValues } from "./types";
 
 export const getDevices = () => carthageFetcher<Device[]>("/devices");
+export const getDevice = (id: string) =>
+  carthageFetcher<Device>(`/devices/${id}`);
 
 export const useCreateDevice = () => {
   const queryClient = useQueryClient();
