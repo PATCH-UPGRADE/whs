@@ -12,6 +12,7 @@ COPY dist /app/dist
 COPY container/network /etc/systemd/network
 COPY container/subuid /etc/subuid
 COPY container/subgid /etc/subgid
+COPY container/00-search.conf /etc/containers/registries.conf.d
 COPY container/containers.conf  /etc/containers/containers.conf
 COPY container/storage.conf /etc/containers/storage.conf
 RUN podman network create net \

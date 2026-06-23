@@ -73,6 +73,40 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
                     )
                 )
 
+        def build_container(device):
+            device_name = device.name
+            device_dhcp = device.dhcp
+            device_mac = device.mac_address if device.mac_address else persistent_random_mac
+            device_ipv4 = device.ipv4_manual
+            device_gateway = device.gateway
+            device_dns_servers = device.dns_servers
+            device_image = model_store.get_device_container_image(device)
+
+            class whs_container(MachineModel):
+                add_provider(machine_implementation_key, dependency_quote(PodmanContainer))
+                add_provider(oci_container_image, device_image.name)
+                name = device_name
+                class net_config(NetworkConfigModel):
+                    if not device_dhcp:
+                        add(
+                            'eth0',
+                            mac=device_mac,
+                            net=injector_access('bridge_net'),
+                            v4_config=V4Config(dhcp=False,
+                                               address=device_ipv4,
+                                               gateway=device_gateway,
+                                               dns_servers=device_dns_servers)
+                        )
+                    else:
+                        add(
+                            'eth0',
+                            mac=device_mac,
+                            net=injector_access('bridge_net'),
+                            v4_config=V4Config(dhcp=device_dhcp),
+                        )
+
+            return whs_container
+        
         def build_vm(device):
 
             device_dhcp = device.dhcp
@@ -126,6 +160,9 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
             return whs_vm
 
         for id, device in model_store.devices.items():
-            new_vm = build_vm(device)
+            if device.type == 'vm':
+                new_vm = build_vm(device)
+            elif device.type == 'container':
+                new_container = build_container(device)
 
     return await ainjector(layout)

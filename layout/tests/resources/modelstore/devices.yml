@@ -15,3 +15,21 @@ tester01:
   ipv4_manual: null
   gateway: null
   dns_servers: []
+tester02:
+  name: tester02
+  description: tester02
+  type: container
+  cloud_init: false
+  architecture: aarch64
+  cpus: 2
+  memory: 4096
+  disk: 20480
+  disk_controller: virtio
+  display: false
+  vm_image_id: null
+  container_image_id: ae2ca98222e3461f908accaf9ea7fd1a
+  dhcp: true
+  mac_address: null
+  ipv4_manual: null
+  gateway: null
+  dns_servers: []

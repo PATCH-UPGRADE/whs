@@ -109,7 +109,7 @@ class ContainerImage(IdentifiedModel):
 
     name: str = Field(description='Name of the image. This should take the shape of an image:tag or image URI.', min_length=1, max_length=64)
     description: str = Field(description='Description or tags', default='')
-    version: float = Field(default=1.00)
+    version: str = Field(description='Version name or number or both', default='', max_length=24)
 
 class Device(IdentifiedModel):
     model_config = default_model_config
