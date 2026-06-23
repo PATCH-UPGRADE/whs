@@ -3,18 +3,31 @@ import { z } from "zod";
 export const DeviceArchitectureType = {
   x86_64: "x86_64",
   aarch64: "aarch64",
+  native: "native",
 } as const;
 
 export const DeviceType = {
-  vm: "Virtual Machine",
-  container: "Container",
-  bareMetal: "Bare Metal",
+  vm: "vm",
+  container: "container",
+  bareMetal: "bareMetal",
 } as const;
 
 export const DiskControllerType = {
   virtio: "virtio",
   sata: "sata",
 } as const;
+
+export const DEVICE_TYPE_TO_DISPLAY_TEXT = {
+  [DeviceType.vm]: "Virtual Machine",
+  [DeviceType.container]: "Container",
+  [DeviceType.bareMetal]: "Bare Metal",
+};
+
+export const DEVICE_ARCHITECTURE_TYPE_TO_DISPLAY_TEXT = {
+  [DeviceArchitectureType.x86_64]: "x86_64",
+  [DeviceArchitectureType.aarch64]: "aarch64",
+  [DeviceArchitectureType.native]: "Native",
+};
 
 export const deviceInputSchema = z.object({
   name: z.string().min(3),

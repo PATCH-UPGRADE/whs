@@ -41,6 +41,8 @@ import { getImages } from "../images/hooks";
 import { columns } from "./columns";
 import { getDevices, useCreateDevice } from "./hooks";
 import {
+  DEVICE_ARCHITECTURE_TYPE_TO_DISPLAY_TEXT,
+  DEVICE_TYPE_TO_DISPLAY_TEXT,
   type Device,
   DeviceArchitectureType,
   type DeviceFormValues,
@@ -48,6 +50,8 @@ import {
   DiskControllerType,
   deviceInputSchema,
 } from "./types";
+
+const allDeviceArchitectureTypes = Object.values(DeviceArchitectureType);
 
 export const DeviceCreateUpdateModal = ({
   form,
@@ -82,8 +86,13 @@ export const DeviceCreateUpdateModal = ({
     ? "Modify Device fields then press 'Update Device' below when you are finished"
     : "Configure a new Device then press 'Create Device' below when you are finished";
 
-  const deviceType = useWatch({ control: form.control, name: "type" });
-  const isVM = deviceType === DeviceType.vm;
+  const selectedDeviceType = useWatch({ control: form.control, name: "type" });
+  
+  // deviceArchitecture won't be shown for bareMetal
+  const deviceArchitectureTypeOptions =
+    selectedDeviceType === DeviceType.container
+      ? allDeviceArchitectureTypes
+      : allDeviceArchitectureTypes.slice(0, -1);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -99,6 +108,49 @@ export const DeviceCreateUpdateModal = ({
             className="px-6"
           >
             <div className="no-scrollbar -mx-6 px-6 py-4 max-h-[60vh] overflow-y-auto grid gap-6">
+
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name *</FormLabel>
+                    <FormDescription>
+                      Enter the device DNS hostname without the domain suffix.
+                    </FormDescription>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="e.g., hrmonitor-01"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormDescription>
+                      Describe the device role or modality.
+                    </FormDescription>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="e.g., Heart rate monitor"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="type"
@@ -127,7 +179,7 @@ export const DeviceCreateUpdateModal = ({
                                 className="rounded-lg border-2 border-primary hover:border-primary/50"
                               />
                             </FormControl>
-                            <FormLabel htmlFor={type}>{type}</FormLabel>
+                            <FormLabel htmlFor={type}>{DEVICE_TYPE_TO_DISPLAY_TEXT[type]}</FormLabel>
                           </FormItem>
                         ))}
                       </RadioGroup>
@@ -137,137 +189,138 @@ export const DeviceCreateUpdateModal = ({
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name *</FormLabel>
-                    <FormDescription>
-                      Enter the device DNS hostname without the domain suffix.
-                    </FormDescription>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        placeholder="e.g., hrmonitor-01"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description *</FormLabel>
-                    <FormDescription>
-                      Describe the device role or modality.
-                    </FormDescription>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        placeholder="e.g., Heart rate monitor"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="vm_image_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Image</FormLabel>
-                    <FormDescription>
-                      Type to search for an uploaded image OR type a custom
-                      image reference
-                    </FormDescription>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        list="image-options"
-                        placeholder="e.g., nginx:latest"
-                        value={field.value ?? ""}
-                        onChange={(e) => field.onChange(e.target.value)}
-                      />
-                    </FormControl>
-                    <datalist id="image-options">
-                      {images?.map(({ id, name }, index) => (
-                        <option key={index} value={id}>
-                          {name}
-                        </option>
-                      ))}
-                    </datalist>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="display"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Require Display *</FormLabel>
-                    <FormDescription>
-                      Specify whether the device needs a graphical display.
-                    </FormDescription>
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="architecture"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Architecture Type *</FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={(val: string) => {
-                          field.onChange(val);
-                        }}
-                        value={field.value}
-                      >
-                        {Object.values(DeviceArchitectureType).map(
-                          (type, i) => (
-                            <FormItem
-                              key={i}
-                              className="flex gap-x-2 hover:border-primary/50 transition-colors"
-                            >
-                              <FormControl>
-                                <RadioGroupItem
-                                  value={type}
-                                  className="rounded-lg border-2 border-primary hover:border-primary/50"
-                                />
-                              </FormControl>
-                              <FormLabel htmlFor={type}>{type}</FormLabel>
-                            </FormItem>
-                          ),
-                        )}
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {isVM && (
+              {selectedDeviceType === DeviceType.vm && (
                 <>
+                  <FormField
+                    control={form.control}
+                    name="vm_image_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Image *</FormLabel>
+                        <FormDescription>
+                          Type to search for an uploaded image OR type a custom
+                          image reference
+                        </FormDescription>
+                        <FormControl>
+                          <Input
+                            type="text"
+                            list="image-options"
+                            placeholder="e.g., nginx:latest"
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value)}
+                          />
+                        </FormControl>
+                        <datalist id="image-options">
+                          {images?.map(({ id, name }, index) => (
+                            <option key={index} value={id}>
+                              {name}
+                            </option>
+                          ))}
+                        </datalist>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+
+              {selectedDeviceType === DeviceType.container && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="container_image_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Image *</FormLabel>
+                        <FormDescription>
+                          Type to search for an uploaded image OR type a custom
+                          image reference
+                        </FormDescription>
+                        <FormControl>
+                          <Input
+                            type="text"
+                            list="image-options"
+                            placeholder="e.g., nginx:latest"
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value)}
+                          />
+                        </FormControl>
+                        <datalist id="image-options">
+                          {images?.map(({ id, name }, index) => (
+                            <option key={index} value={id}>
+                              {name}
+                            </option>
+                          ))}
+                        </datalist>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+
+              {selectedDeviceType !== DeviceType.bareMetal && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="architecture"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Architecture Type *</FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={(val: string) => {
+                              field.onChange(val);
+                            }}
+                            value={field.value}
+                            >
+                            {deviceArchitectureTypeOptions.map(
+                              (type, i) => (
+                                <FormItem
+                                key={i}
+                                className="flex gap-x-2 hover:border-primary/50 transition-colors"
+                                >
+                                  <FormControl>
+                                    <RadioGroupItem
+                                      value={type}
+                                      className="rounded-lg border-2 border-primary hover:border-primary/50"
+                                      />
+                                  </FormControl>
+                                  <FormLabel htmlFor={type}>{DEVICE_ARCHITECTURE_TYPE_TO_DISPLAY_TEXT[type]}</FormLabel>
+                                </FormItem>
+                              ),
+                            )}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+
+              {selectedDeviceType === DeviceType.vm && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="display"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Require Display *</FormLabel>
+                        <FormDescription>
+                          Specify whether the device needs a graphical display.
+                        </FormDescription>
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <FormField
                     control={form.control}
                     name="cloud_init"
@@ -420,75 +473,46 @@ export const DeviceCreateUpdateModal = ({
                 </>
               )}
 
-              <FormField
-                control={form.control}
-                name="dhcp"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>DHCP *</FormLabel>
-                    <FormDescription>
-                      Enable DHCP for automatic addressing, or disable it and
-                      provide static network settings below.
-                    </FormDescription>
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="ipv4_manual"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>ipv4</FormLabel>
-                    <FormDescription>
-                      Enter a static IPv4 address when DHCP is disabled.
-                    </FormDescription>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        placeholder="e.g. 192.168.0.254"
-                        {...field}
-                        onChange={(e) => {
-                          field.onChange(
-                            e.target.value !== "" ? e.target.value : undefined,
-                          );
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {isVM && (
+              {selectedDeviceType !== DeviceType.bareMetal && (
                 <>
                   <FormField
                     control={form.control}
-                    name="mac_address"
+                    name="dhcp"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>MAC Address</FormLabel>
+                        <FormLabel>DHCP *</FormLabel>
                         <FormDescription>
-                          Optionally set a specific MAC address instead of using
-                          an automatic assignment.
+                          Enable DHCP for automatic addressing, or disable it and
+                          provide static network settings below.
+                        </FormDescription>
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="ipv4_manual"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>ipv4</FormLabel>
+                        <FormDescription>
+                          Enter a static IPv4 address when DHCP is disabled.
                         </FormDescription>
                         <FormControl>
                           <Input
                             type="text"
-                            placeholder="e.g. 00:1A:2B:3C:4D:5E"
+                            placeholder="e.g. 192.168.0.254"
                             {...field}
                             onChange={(e) => {
                               field.onChange(
-                                e.target.value !== ""
-                                  ? e.target.value
-                                  : undefined,
+                                e.target.value !== "" ? e.target.value : undefined,
                               );
                             }}
                           />
@@ -497,7 +521,42 @@ export const DeviceCreateUpdateModal = ({
                       </FormItem>
                     )}
                   />
+                </>
+              )}
 
+              {selectedDeviceType !== DeviceType.container && (
+                <FormField
+                  control={form.control}
+                  name="mac_address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>MAC Address</FormLabel>
+                      <FormDescription>
+                        Optionally set a specific MAC address instead of using
+                        an automatic assignment.
+                      </FormDescription>
+                      <FormControl>
+                        <Input
+                          type="text"
+                          placeholder="e.g. 00:1A:2B:3C:4D:5E"
+                          {...field}
+                          onChange={(e) => {
+                            field.onChange(
+                              e.target.value !== ""
+                              ? e.target.value
+                                : undefined,
+                              );
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {selectedDeviceType === DeviceType.vm && (
+                <>
                   <FormField
                     control={form.control}
                     name="gateway"
@@ -598,7 +657,7 @@ export const DevicesContainer = () => {
       memory: 4096, // Megabytes
       disk: 20480, // Megabytes
       disk_controller: "virtio",
-      display: false,
+      display: true,
       vm_image_id: null,
       container_image_id: null,
       dhcp: true,
@@ -610,6 +669,11 @@ export const DevicesContainer = () => {
   });
 
   const handleCreate = (item: DeviceFormValues) => {
+    // handle edge case where user sets container to native then flips back to a VM 
+    if (item.architecture === "native" && item.type === "vm") {
+      item.architecture = "x86_64";
+    }
+
     createDevice.mutate(item, {
       onSuccess: () => {
         form.reset();
