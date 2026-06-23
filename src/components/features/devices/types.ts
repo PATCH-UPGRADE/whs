@@ -6,8 +6,9 @@ export const DeviceArchitectureType = {
 } as const;
 
 export const DeviceType = {
-  vm: "vm",
-  container: "container",
+  vm: "Virtual Machine",
+  container: "Container",
+  bareMetal: "Bare Metal",
 } as const;
 
 export const DiskControllerType = {
