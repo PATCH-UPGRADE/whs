@@ -23,22 +23,22 @@ def test_app_reads_seeded_devices(app, model_store, state_dir: Path):
 
     assert response.status_code == 200
     payload = response.json()
-    assert len(payload) == 1
+    assert len(payload) == 2
     assert payload[0]["id"] == "tester01"
     assert (state_dir / "model_store" / "devices.yml").exists()
 
 
 def test_model_store_saves_into_temp_state_dir(model_store, state_dir: Path):
     device = Device(
-        id="tester02",
-        name="tester02",
-        description="Second test device",
+        id="tester03",
+        name="tester03",
+        description="Third test device",
     )
     model_store.devices[device.id] = device
     model_store.save()
 
     saved = (state_dir / "model_store" / "devices.yml").read_text()
-    assert "tester02" in saved
+    assert "tester03" in saved
 
 
 def test_vm_image_check_pending_updates_and_saves(model_store, state_dir: Path):
@@ -57,7 +57,7 @@ def _add_container_export_data(model_store):
         id="nginx_latest",
         name="nginx:latest",
         description="Nginx test image",
-        version=1.0,
+        version='',
     )
     device = Device(
         id="container01",
@@ -82,9 +82,9 @@ def test_model_store_import_yaml_round_trips_and_merges_existing_data(model_stor
     _add_container_export_data(model_store)
     exported = model_store.export_yaml()
     extra_device = Device(
-        id="tester02",
-        name="tester02",
-        description="Second test device",
+        id="tester03",
+        name="tester03",
+        description="Third test device",
     )
     imported_store = ModelStore()
     imported_store.devices[extra_device.id] = extra_device
@@ -95,11 +95,11 @@ def test_model_store_import_yaml_round_trips_and_merges_existing_data(model_stor
     assert imported_store.devices["tester01"].vm_image_id == "debian_arm"
     container01 = imported_store.devices["container01"]
     assert container01.type == "container"
-    assert imported_store.devices["tester02"] == extra_device
+    assert imported_store.devices["tester03"] == extra_device
     assert imported_store.get_device_container_image(container01).name == "nginx:latest"
     assert "container_images" not in round_tripped
     assert isinstance(round_tripped["devices"], dict)
-    assert set(round_tripped["devices"]) == {"tester01", "tester02", "container01"}
+    assert set(round_tripped["devices"]) == {"tester01", "tester02", "tester03", "container01"}
     assert "id" not in round_tripped["devices"]["tester01"]
     assert round_tripped["devices"]["container01"]["container_image"] == "nginx:latest"
 
