@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Any, Callable, Literal, Optional, TypeVar
+from typing import Any, Callable, Literal, Optional, TypeVar, Union
 from pydantic import BaseModel, ConfigDict, Field, IPvAnyAddress, model_serializer, model_validator
 from pathlib import Path
 import yaml
@@ -168,7 +168,23 @@ class Device(IdentifiedModel):
             data['container_image_id'] = store.resolve_image(device_type='container', image=data['container_image']).id
             del data['container_image']
         return data
-    
+
+# Frontend will basically always want the device with image so this is the intermediate class to faciliate that
+class DeviceWithImage(Device):
+    model_config = default_model_config
+
+    vm_image: Optional[VmImage] = None
+    container_image: Optional[ContainerImage] = None
+
+    @classmethod
+    def from_store(cls, device: Device, store: 'ModelStore') -> 'DeviceWithImage':
+        vm_image, container_image = store.get_device_images(device)
+        return cls(
+            **device.model_dump(),
+            vm_image=vm_image,
+            container_image=container_image,
+        )
+
 class Pcap(IdentifiedModel):
     model_config = default_model_config
     id: str = Field(default_factory=lambda: uuid4().hex)

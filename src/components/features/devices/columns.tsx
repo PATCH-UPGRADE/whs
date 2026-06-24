@@ -1,12 +1,23 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ColumnDef } from "@tanstack/react-table";
-import { ScreenShare, SquarePen, TrashIcon } from "lucide-react";
+import { SquarePen, TrashIcon } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
+import { useUploadImage } from "../images/hooks";
+import { ImageUploadModal } from "../images/Images";
+import {
+  type ImageUploadFormValues,
+  imageUploadInputSchema,
+} from "../images/types";
 import { DeviceCreateUpdateModal } from "./Devices";
 import { useDeleteDevice, useUpdateDevice } from "./hooks";
-import { type Device, type DeviceFormValues, deviceInputSchema } from "./types";
+import {
+  type Device,
+  type DeviceFormValues,
+  DeviceType,
+  deviceInputSchema,
+} from "./types";
 
 export const columns: ColumnDef<Device>[] = [
   {
@@ -29,92 +40,147 @@ export const columns: ColumnDef<Device>[] = [
     meta: { title: "type" },
     header: "Device Type",
   },
+  // {
+  //   accessorKey: "architecture",
+  //   meta: { title: "architecture" },
+  //   header: "Architecture Type",
+  // },
+  // {
+  //   accessorKey: "cloud_init",
+  //   meta: { title: "cloud_init" },
+  //   header: "Cloud Init?",
+  // },
+  // {
+  //   accessorKey: "cpus",
+  //   meta: { title: "cpus" },
+  //   header: "CPU Cores",
+  // },
+  // {
+  //   accessorKey: "memory",
+  //   meta: { title: "memory" },
+  //   header: "Memory",
+  // },
+  // {
+  //   accessorKey: "disk",
+  //   meta: { title: "disk" },
+  //   header: "Disk",
+  // },
+  // {
+  //   accessorKey: "disk_controller",
+  //   meta: { title: "disk_controller" },
+  //   header: "Disk Controller",
+  // },
+  // {
+  //   accessorKey: "display",
+  //   meta: { title: "display" },
+  //   header: "Display?",
+  // },
+  // {
+  //   accessorKey: "vm_image_id",
+  //   meta: { title: "vm_image_id" },
+  //   header: "VM Image ID",
+  // },
+  // {
+  //   accessorKey: "container_image_id",
+  //   meta: { title: "container_image_id" },
+  //   header: "Container Image ID",
+  // },
+  // {
+  //   accessorKey: "dhcp",
+  //   meta: { title: "dhcp" },
+  //   header: "DHCP",
+  // },
+  // {
+  //   accessorKey: "mac_address",
+  //   meta: { title: "mac_address" },
+  //   header: "MAC Address",
+  // },
+  // {
+  //   accessorKey: "ipv4_manual",
+  //   meta: { title: "ipv4_manual" },
+  //   header: "IPV4 Manual?",
+  // },
+  // {
+  //   accessorKey: "gateway",
+  //   meta: { title: "gateway" },
+  //   header: "Gateway",
+  // },
+  // {
+  //   accessorKey: "dns_servers",
+  //   meta: { title: "dns_servers" },
+  //   header: "DNS Servers",
+  // },
   {
-    accessorKey: "architecture",
-    meta: { title: "architecture" },
-    header: "Architecture Type",
-  },
-  {
-    accessorKey: "cloud_init",
-    meta: { title: "cloud_init" },
-    header: "Cloud Init?",
-  },
-  {
-    accessorKey: "cpus",
-    meta: { title: "cpus" },
-    header: "CPU Cores",
-  },
-  {
-    accessorKey: "memory",
-    meta: { title: "memory" },
-    header: "Memory",
-  },
-  {
-    accessorKey: "disk",
-    meta: { title: "disk" },
-    header: "Disk",
-  },
-  {
-    accessorKey: "disk_controller",
-    meta: { title: "disk_controller" },
-    header: "Disk Controller",
-  },
-  {
-    accessorKey: "display",
-    meta: { title: "display" },
-    header: "Display?",
-  },
-  {
-    accessorKey: "vm_image_id",
-    meta: { title: "vm_image_id" },
-    header: "VM Image ID",
-  },
-  {
-    accessorKey: "container_image_id",
-    meta: { title: "container_image_id" },
-    header: "Container Image ID",
-  },
-  {
-    accessorKey: "dhcp",
-    meta: { title: "dhcp" },
-    header: "DHCP",
-  },
-  {
-    accessorKey: "mac_address",
-    meta: { title: "mac_address" },
-    header: "MAC Address",
-  },
-  {
-    accessorKey: "ipv4_manual",
-    meta: { title: "ipv4_manual" },
-    header: "IPV4 Manual?",
-  },
-  {
-    accessorKey: "gateway",
-    meta: { title: "gateway" },
-    header: "Gateway",
-  },
-  {
-    accessorKey: "dns_servers",
-    meta: { title: "dns_servers" },
-    header: "DNS Servers",
+    accessorKey: "image",
+    meta: { title: "pending" },
+    header: "Image Status",
+    cell: ({ row }) => {
+      const image =
+        row.original.type === DeviceType.vm
+          ? row.original.vm_image
+          : row.original.container_image;
+      return image?.pending ? (
+        <span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900">
+          Pending upload
+        </span>
+      ) : (
+        <span className="text-sm text-muted-foreground">Uploaded</span>
+      );
+    },
   },
   {
     id: "actions",
     enableHiding: false,
+    header: "Actions",
     cell: ({ row }) => {
       const data = row.original;
-      const vncUrl = `/devices/${data.id}`;
 
       const deleteDevice = useDeleteDevice();
+      const updateDevice = useUpdateDevice();
+      // const uploadImage = useUploadImage();
+
       const handleRemove = () => {
         deleteDevice.mutate({ id: data.id });
       };
 
-      const updateDevice = useUpdateDevice();
-      const [open, setOpen] = useState(false);
+      const handleDeviceUpdate = (item: DeviceFormValues) => {
+        updateDevice.mutate(
+          { id: data.id, updateDevice: item },
+          {
+            onSuccess: () => {
+              deviceForm.reset();
+              setEditModalOpen(false);
+            },
+            onError: () => {
+              setEditModalOpen(true);
+            },
+          },
+        );
+      };
 
-      const form = useForm<DeviceFormValues>({
+      // const handleUploadImage = (item: ImageUploadFormValues) => {
+      //   // repack data as FormData so the browser auto sets the header to
+      //   // Content-Type: multipart/form-data. the browser has to do it itself
+      //   const formData = new FormData();
+      //   formData.append("file", item.file);
+      //   formData.append("description", item.description);
+      //   formData.append("version", item.version);
+
+      //   uploadImage.mutate(formData, {
+      //     onSuccess: () => {
+      //       setUploadImageModalOpen(false);
+      //     },
+      //     onError: () => {
+      //       setUploadImageModalOpen(true);
+      //     },
+      //   });
+      // };
+
+      const [editModalOpen, setEditModalOpen] = useState(false);
+      const [pendingImage, _setPendingImage] = useState<null>(null);
+      const [uploadImageModalOpen, setUploadImageModalOpen] = useState(false);
+
+      const deviceForm = useForm<DeviceFormValues>({
         resolver: zodResolver(deviceInputSchema),
         defaultValues: {
           name: data.name,
@@ -137,32 +203,46 @@ export const columns: ColumnDef<Device>[] = [
         },
       });
 
-      const handleUpdate = (item: DeviceFormValues) => {
-        updateDevice.mutate(
-          { id: data.id, updateDevice: item },
-          {
-            onSuccess: () => {
-              form.reset();
-              setOpen(false);
-            },
-            onError: () => {
-              setOpen(true);
-            },
-          },
-        );
-      };
+      // const uploadImageForm = useForm<ImageUploadFormValues>({
+      //   resolver: zodResolver(imageUploadInputSchema),
+      //   defaultValues: {
+      //     file: undefined,
+      //     description: "",
+      //     version: "",
+      //   },
+      // });
 
       return (
         <div className="flex inline-flex">
-          <div className="flex w-24 bg-blue-300/80 h-8 gap-1.5 px-2.5 py-1 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap">
-            <ScreenShare />
-            <a href={vncUrl} className="">
-              Viewer
-            </a>
-          </div>
+          {/* {data.vm_image?.pending ||
+            (data.container_image?.pending && (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setUploadImageModalOpen(true);
+                  }}
+                >
+                  Upload
+                </Button>
+                <ImageUploadModal
+                  form={uploadImageForm}
+                  open={uploadImageModalOpen}
+                  pendingImage={pendingImage}
+                  setOpen={setUploadImageModalOpen}
+                  handleCreate={handleUploadImage}
+                />
+              </>
+            ))
+          } */}
           <Button
             className=""
-            onClick={() => setOpen(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditModalOpen(true);
+            }}
             disabled={updateDevice.isPending}
           >
             <SquarePen />
@@ -170,7 +250,10 @@ export const columns: ColumnDef<Device>[] = [
           </Button>
           <Button
             className=""
-            onClick={handleRemove}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRemove();
+            }}
             disabled={deleteDevice.isPending}
             variant="destructive"
           >
@@ -178,12 +261,12 @@ export const columns: ColumnDef<Device>[] = [
             Delete
           </Button>
 
-          {open && (
+          {editModalOpen && (
             <DeviceCreateUpdateModal
-              form={form}
-              open={open}
-              setOpen={setOpen}
-              handleCreate={handleUpdate}
+              form={deviceForm}
+              open={editModalOpen}
+              setOpen={setEditModalOpen}
+              handleCreate={handleDeviceUpdate}
               isUpdate={true}
             />
           )}

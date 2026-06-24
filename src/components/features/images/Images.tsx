@@ -43,7 +43,7 @@ import {
   imageUploadInputSchema,
 } from "./types";
 
-export const VmImageUploadModal = ({
+export const ImageUploadModal = ({
   form,
   handleCreate,
   open,
@@ -278,7 +278,7 @@ export const ImagesContainer = () => {
         Add Image
       </Button>
 
-      <VmImageUploadModal
+      <ImageUploadModal
         form={form}
         open={open}
         pendingImage={pendingImage}

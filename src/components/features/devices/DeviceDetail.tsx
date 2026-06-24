@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
-import { SlashIcon } from "lucide-react";
+import { Braces, ScreenShare, SlashIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   Breadcrumb,
@@ -10,6 +10,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getDevice } from "./hooks";
 import VncConnection from "./VNCViewer";
@@ -55,7 +56,7 @@ export const DeviceDetail = () => {
   }
 
   return (
-    <div>
+    <div className="flex flex-col w-auto h-full">
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -70,34 +71,48 @@ export const DeviceDetail = () => {
         </BreadcrumbList>
       </Breadcrumb>
 
-      <div ref={vncDesktopNameRef} id="vncDesktopName" className="mt-3">
-        <span>{deviceData.name}</span>
-        <span>{deviceData.description}</span>
+      <div className="flex flex-col mt-3">
+        <div className="text-lg">
+          <span className="font-bold">Device Name:</span> {deviceData.name}
+        </div>
+        <div className="text-md">
+          <span className="font-bold">Description:</span>{" "}
+          {deviceData.description}
+        </div>
       </div>
 
-      <Tabs
-        defaultValue="inspect"
-        onValueChange={setCurrentTab}
-        className="w-[400px]"
-      >
+      <Separator className="my-2 pb-0.5" />
+
+      <Tabs defaultValue="inspect" onValueChange={setCurrentTab} className="">
         <TabsList>
-          <TabsTrigger value="inspect">Inspect</TabsTrigger>
-          <TabsTrigger value="vnc">VNC</TabsTrigger>
+          <TabsTrigger className="text-lg cursor-pointer" value="inspect">
+            <Braces />
+            Inspect
+          </TabsTrigger>
+          <TabsTrigger className="text-lg cursor-pointer" value="vnc">
+            <ScreenShare />
+            VNC
+          </TabsTrigger>
         </TabsList>
-        <TabsContent value="inspect">
-          <pre className="p-4 my-4 overflow-x-auto text-sm font-mono rounded-lg bg-zinc-100 text-zinc-800 border border-zinc-200">
-            <code>{JSON.stringify(deviceData, null, 2)}</code>
-          </pre>
-        </TabsContent>
-        <TabsContent value="vnc">
-          <div ref={vncDesktopNameRef} id="vncDesktopName" className="mt-3">
-            N/A
-          </div>
-          <div ref={vncStatusRef} id="vncStatus">
-            Not Connected
-          </div>
-          <div ref={vncScreenRef} id="vncScreen" className="mt-1"></div>
-        </TabsContent>
+
+        <div className="flex flex-col w-full h-full">
+          <TabsContent value="inspect">
+            <pre className="w-full p-4 my-4 overflow-x-auto text-md font-mono rounded-lg bg-zinc-100 text-zinc-800 border border-zinc-200">
+              <code className="w-auto">
+                {JSON.stringify(deviceData, null, 2)}
+              </code>
+            </pre>
+          </TabsContent>
+          <TabsContent value="vnc">
+            <div ref={vncDesktopNameRef} id="vncDesktopName" className="mt-3">
+              N/A
+            </div>
+            <div ref={vncStatusRef} id="vncStatus">
+              Not Connected
+            </div>
+            <div ref={vncScreenRef} id="vncScreen" className="mt-1"></div>
+          </TabsContent>
+        </div>
       </Tabs>
     </div>
   );

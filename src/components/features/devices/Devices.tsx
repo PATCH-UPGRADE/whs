@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import {
   flexRender,
   getCoreRowModel,
@@ -665,6 +666,8 @@ interface DevicesListI {
 }
 
 const DevicesList = ({ devices }: DevicesListI) => {
+  const navigate = useNavigate();
+
   const table = useReactTable({
     data: devices,
     columns: columns,
@@ -673,17 +676,12 @@ const DevicesList = ({ devices }: DevicesListI) => {
 
   return (
     <div>
-      <table
-        style={{ border: "1px solid black", width: "100%", textAlign: "left" }}
-      >
+      <table className="w-full border border-black text-left">
         <thead>
           {table.getHeaderGroups().map((headerGroup, index) => (
             <tr key={index}>
               {headerGroup.headers.map((header, index) => (
-                <th
-                  key={index}
-                  style={{ borderBottom: "1px solid black", padding: "8px" }}
-                >
+                <th key={index} className="border-b border-black p-2">
                   {header.isPlaceholder
                     ? null
                     : flexRender(
@@ -697,11 +695,20 @@ const DevicesList = ({ devices }: DevicesListI) => {
         </thead>
         <tbody>
           {table.getRowModel().rows.map((row, index) => (
-            <tr key={index}>
+            <tr
+              key={index}
+              onClick={() =>
+                navigate({
+                  to: "/devices/$deviceId",
+                  params: { deviceId: row.original.id },
+                })
+              }
+              className="cursor-pointer hover:bg-muted transition-colors"
+            >
               {row.getVisibleCells().map((cell, index) => (
                 <td
                   key={index}
-                  style={{ padding: "8px", borderBottom: "1px solid #eee" }}
+                  className="border-black p-2 max-w-[125px] truncate"
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
