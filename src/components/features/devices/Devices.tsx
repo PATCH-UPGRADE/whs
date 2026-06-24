@@ -87,7 +87,7 @@ export const DeviceCreateUpdateModal = ({
     : "Configure a new Device then press 'Create Device' below when you are finished";
 
   const selectedDeviceType = useWatch({ control: form.control, name: "type" });
-  
+
   // deviceArchitecture won't be shown for bareMetal
   const deviceArchitectureTypeOptions =
     selectedDeviceType === DeviceType.container
@@ -108,7 +108,6 @@ export const DeviceCreateUpdateModal = ({
             className="px-6"
           >
             <div className="no-scrollbar -mx-6 px-6 py-4 max-h-[60vh] overflow-y-auto grid gap-6">
-
               <FormField
                 control={form.control}
                 name="name"
@@ -179,7 +178,9 @@ export const DeviceCreateUpdateModal = ({
                                 className="rounded-lg border-2 border-primary hover:border-primary/50"
                               />
                             </FormControl>
-                            <FormLabel htmlFor={type}>{DEVICE_TYPE_TO_DISPLAY_TEXT[type]}</FormLabel>
+                            <FormLabel htmlFor={type}>
+                              {DEVICE_TYPE_TO_DISPLAY_TEXT[type]}
+                            </FormLabel>
                           </FormItem>
                         ))}
                       </RadioGroup>
@@ -273,23 +274,27 @@ export const DeviceCreateUpdateModal = ({
                               field.onChange(val);
                             }}
                             value={field.value}
-                            >
-                            {deviceArchitectureTypeOptions.map(
-                              (type, i) => (
-                                <FormItem
+                          >
+                            {deviceArchitectureTypeOptions.map((type, i) => (
+                              <FormItem
                                 key={i}
                                 className="flex gap-x-2 hover:border-primary/50 transition-colors"
-                                >
-                                  <FormControl>
-                                    <RadioGroupItem
-                                      value={type}
-                                      className="rounded-lg border-2 border-primary hover:border-primary/50"
-                                      />
-                                  </FormControl>
-                                  <FormLabel htmlFor={type}>{DEVICE_ARCHITECTURE_TYPE_TO_DISPLAY_TEXT[type]}</FormLabel>
-                                </FormItem>
-                              ),
-                            )}
+                              >
+                                <FormControl>
+                                  <RadioGroupItem
+                                    value={type}
+                                    className="rounded-lg border-2 border-primary hover:border-primary/50"
+                                  />
+                                </FormControl>
+                                <FormLabel htmlFor={type}>
+                                  {
+                                    DEVICE_ARCHITECTURE_TYPE_TO_DISPLAY_TEXT[
+                                      type
+                                    ]
+                                  }
+                                </FormLabel>
+                              </FormItem>
+                            ))}
                           </RadioGroup>
                         </FormControl>
                         <FormMessage />
@@ -314,7 +319,7 @@ export const DeviceCreateUpdateModal = ({
                           <Checkbox
                             checked={field.value}
                             onCheckedChange={field.onChange}
-                            />
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -482,8 +487,8 @@ export const DeviceCreateUpdateModal = ({
                       <FormItem>
                         <FormLabel>DHCP *</FormLabel>
                         <FormDescription>
-                          Enable DHCP for automatic addressing, or disable it and
-                          provide static network settings below.
+                          Enable DHCP for automatic addressing, or disable it
+                          and provide static network settings below.
                         </FormDescription>
                         <FormControl>
                           <Checkbox
@@ -512,7 +517,9 @@ export const DeviceCreateUpdateModal = ({
                             {...field}
                             onChange={(e) => {
                               field.onChange(
-                                e.target.value !== "" ? e.target.value : undefined,
+                                e.target.value !== ""
+                                  ? e.target.value
+                                  : undefined,
                               );
                             }}
                           />
@@ -543,9 +550,9 @@ export const DeviceCreateUpdateModal = ({
                           onChange={(e) => {
                             field.onChange(
                               e.target.value !== ""
-                              ? e.target.value
+                                ? e.target.value
                                 : undefined,
-                              );
+                            );
                           }}
                         />
                       </FormControl>
@@ -669,7 +676,7 @@ export const DevicesContainer = () => {
   });
 
   const handleCreate = (item: DeviceFormValues) => {
-    // handle edge case where user sets container to native then flips back to a VM 
+    // handle edge case where user sets container to native then flips back to a VM
     if (item.architecture === "native" && item.type === "vm") {
       item.architecture = "x86_64";
     }
