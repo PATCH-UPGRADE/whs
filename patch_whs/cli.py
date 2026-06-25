@@ -43,6 +43,12 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="DIR",
         help="Bind mount DIR to /run/libvirt inside the container",
     )
+    start_parser.add_argument(
+        "--nic",
+        metavar="IFNAME",
+        action="append",
+        help="Attach real device(s) via macvlan on specified interface(s)",
+    )
     start_parser.set_defaults(handler=handle_start)
     return parser
 
@@ -89,11 +95,33 @@ def parse_command(command: str) -> list[str]:
     return shlex.split(command, posix=True)
 
 
+def ensure_macvlan_network(nic: str) -> None:
+    """Ensure the macvlan network for the given NIC exists."""
+    net_name = f"whs-{nic}"
+    run_podman_command([
+        "podman", "network", "create", 
+        "--driver", "macvlan", 
+        "-o", f"parent={nic}", 
+        "-o", "mode=passthru", 
+        "--ipam-driver", "none", 
+        "--ignore", 
+        net_name
+    ])
+
+
 def build_runtime_options(args: argparse.Namespace) -> list[str]:
     options: list[str] = []
     if args.expose_libvirt:
         libvirt_dir = Path(args.expose_libvirt)
         options.extend(["-v", f"{libvirt_dir}:/run/libvirt"])
+
+    nics = args.nic or []
+    if nics:
+        # Add default network first
+        options.extend(["--network", get_default_network()])
+        for nic in nics:
+            ensure_macvlan_network(nic)
+            options.extend(["--network", f"whs-{nic}:interface_name=xi-{nic}"])
     return options
 
 
@@ -188,9 +216,20 @@ def ensure_podman_ready() -> None:
     return
 
 
+def get_default_network() -> str:
+    """Return the default podman network name."""
+    result = run_podman_command(["podman", "info", "--format", "json"], capture_output=True)
+    try:
+        data = json.loads(result.stdout)
+        return data["host"]["networkBackendInfo"]["defaultNetwork"]
+    except (json.JSONDecodeError, KeyError):
+        return "podman"
+
+
 def handle_start(args: argparse.Namespace) -> int:
     ensure_podman_ready()
     ensure_windows_nested_virtualization()
+    
     run_podman_command(["podman", "pull", args.image])
     labels = inspect_image_labels(args.image)
     label_name = DEVELOP_LABEL if args.develop else RUN_LABEL
@@ -206,6 +245,7 @@ def handle_start(args: argparse.Namespace) -> int:
             "NAME": args.name,
         },
     )
+    
     argv = strip_podman_remote_command_args(parse_command(expanded_command))
     run_podman_command(argv)
     return 0
