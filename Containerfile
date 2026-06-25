@@ -24,6 +24,7 @@ RUN podman network create net \
               -o mode=unmanaged && rm -rf /run/containers /run/libpod
 COPY container/podman.json /etc/containers/networks/podman.json
 COPY container/podman.json /srv/whs/containers/networks/podman.json
+RUN cp /srv/whs/containers/networks/net.json /etc/containers/networks
 LABEL run_whs 'podman run -d -ti --privileged -p 8080:8080 --group-add=keep-groups -v$NAME:/srv/whs --name $NAME $IMAGE'
 LABEL develop_whs 'podman run -d -ti --privileged -p 8080:8080 --group-add=keep-groups -v${PWD}:/app -v$NAME:/srv/whs --name $NAME $IMAGE'
 VOLUME /srv/whs
