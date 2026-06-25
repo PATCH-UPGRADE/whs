@@ -14,18 +14,19 @@ export const AppSidebar: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-muted">
-      <div className="w-64 bg-white shadow-md">
-        <div className="p-6">
-          <h1 className="text-2xl font-bold">WHS</h1>
+      <div className="w-64 bg-white border-r-3 border-gray-300">
+        <div className="p-6 border-b-3 border-gray-300">
+          <h1 className="text-2xl font-bold">W.H.S.</h1>
         </div>
-        <nav className="mt-6">
+        <nav className="flex flex-col gap-1 mt-2">
           {urls.map((url, index) => (
             <a
               key={index}
               href={url.path}
               className={cn(
-                "flex items-center px-6 py-3 text-gray-700 border-r-4 hover:bg-muted",
-                path.includes(url.path) && "bg-muted border-blue-600",
+                "flex items-center px-6 py-3 font-medium text-gray-700 border-l-6 border-gray-500 hover:bg-muted",
+                path.includes(url.path) &&
+                  "font-bold bg-blue-50 border-blue-600",
               )}
             >
               <span className="mx-3">{url.name}</span>

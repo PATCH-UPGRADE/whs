@@ -115,7 +115,7 @@ export const columns: ColumnDef<Device>[] = [
           : row.original.container_image;
       return image?.pending ? (
         <span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900">
-          Pending upload
+          Pending Upload
         </span>
       ) : (
         <span className="">Uploaded</span>
@@ -207,8 +207,9 @@ export const columns: ColumnDef<Device>[] = [
       // });
 
       return (
-        <div className="flex inline-flex">
-          {/* {data.vm_image?.pending ||
+        <div className="flex justify-between">
+          <div className="flex">
+            {/* {data.vm_image?.pending ||
             (data.container_image?.pending && (
               <>
                 <Button
@@ -231,7 +232,6 @@ export const columns: ColumnDef<Device>[] = [
               </>
             ))
           } */}
-          <div className="justify-between">
             <Button
               className=""
               onClick={(e) => {
@@ -243,19 +243,20 @@ export const columns: ColumnDef<Device>[] = [
               <SquarePen />
               {updateDevice.isPending ? "Updating..." : "Update"}
             </Button>
-            <Button
-              className=""
-              onClick={(e) => {
-                e.stopPropagation();
-                handleRemove();
-              }}
-              disabled={deleteDevice.isPending}
-              variant="destructive"
-            >
-              <TrashIcon />
-              Delete
-            </Button>
           </div>
+
+          <Button
+            className="self-end"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRemove();
+            }}
+            disabled={deleteDevice.isPending}
+            variant="destructive"
+          >
+            <TrashIcon />
+            Delete
+          </Button>
 
           {editModalOpen && (
             <DeviceCreateUpdateModal

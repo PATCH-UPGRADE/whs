@@ -38,11 +38,9 @@ export const getImageColumns = ({
     header: "Status",
     cell: ({ row }) =>
       row.original.pending ? (
-        <a href={"/images"}>
-          <span className="inline-flex rounded-full bg-amber-100 px-2 py-1 font-medium text-amber-900">
-            Pending upload
-          </span>
-        </a>
+        <span className="rounded-full border-2 bg-red-200 px-2 py-1 font-medium text-red-950">
+          Pending Upload
+        </span>
       ) : (
         <span className="">Uploaded</span>
       ),

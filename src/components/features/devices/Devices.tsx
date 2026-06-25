@@ -693,7 +693,7 @@ export const DevicesContainer = () => {
       </Breadcrumb>
 
       <Button
-        className="self-end text-md bg-blue-800 mb-1"
+        className="self-end text-md font-semibold bg-blue-800 mb-1 hover:bg-blue-700 transition-color"
         onClick={() => setOpen(true)}
       >
         <PlusIcon />
@@ -733,13 +733,16 @@ const DevicesList = ({ devices }: DevicesListI) => {
   });
 
   return (
-    <div>
-      <table className="w-full border border-black text-left">
-        <thead>
+    <div className="overflow-x-auto rounded border border-gray-300">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-blue-200">
           {table.getHeaderGroups().map((headerGroup, index) => (
             <tr key={index}>
               {headerGroup.headers.map((header, index) => (
-                <th key={index} className="border-b border-black p-2">
+                <th
+                  key={index}
+                  className="border-b border-gray-200 px-4 py-3 font-bold uppercase text-md tracking-wide"
+                >
                   {header.isPlaceholder
                     ? null
                     : flexRender(
@@ -751,7 +754,7 @@ const DevicesList = ({ devices }: DevicesListI) => {
             </tr>
           ))}
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-gray-100">
           {table.getRowModel().rows.map((row, index) => (
             <tr
               key={index}
@@ -761,12 +764,12 @@ const DevicesList = ({ devices }: DevicesListI) => {
                   params: { deviceId: row.original.id },
                 })
               }
-              className="odd:bg-white even:bg-muted cursor-pointer hover:bg-blue-100 transition-colors"
+              className="odd:bg-white even:bg-blue-50 cursor-pointer transition-colors hover:bg-gray-200 text-md"
             >
               {row.getVisibleCells().map((cell, index) => (
                 <td
                   key={index}
-                  className="border-black p-2 max-w-[125px] truncate"
+                  className="max-w-[125px] truncate px-4 py-3 text-gray-700"
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
