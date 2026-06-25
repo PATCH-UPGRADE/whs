@@ -146,6 +146,7 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
                 device_model = device
                 name = device.name
                 add_provider(machine_implementation_key, dependency_quote(BareMetalMachine))
+                running = True
 
             return whs_bare_metal
 
