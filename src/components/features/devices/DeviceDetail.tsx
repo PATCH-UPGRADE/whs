@@ -13,8 +13,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getDevice } from "./hooks";
-import VncConnection from "./VNCViewer";
 import { DeviceType } from "./types";
+import VncConnection from "./VNCViewer";
 
 export const DeviceDetail = () => {
   const { deviceId } = useParams({ from: "/devices/$deviceId" });
@@ -35,11 +35,7 @@ export const DeviceDetail = () => {
   });
 
   useEffect(() => {
-    if (
-      connectionRef.current !== null ||
-      isPending ||
-      isError
-    ) {
+    if (connectionRef.current !== null || isPending || isError) {
       return;
     }
 
@@ -55,7 +51,10 @@ export const DeviceDetail = () => {
     return <div>Device not found!</div>;
   }
 
-  const isImagePending = (deviceData.type === DeviceType.vm && deviceData.vm_image?.pending) || (deviceData.type === DeviceType.container && deviceData.container_image?.pending);
+  const isImagePending =
+    (deviceData.type === DeviceType.vm && deviceData.vm_image?.pending) ||
+    (deviceData.type === DeviceType.container &&
+      deviceData.container_image?.pending);
 
   return (
     <div className="flex flex-col w-auto h-full">
@@ -78,7 +77,9 @@ export const DeviceDetail = () => {
           <span className="font-bold">Device Name:</span> {deviceData.name}
           {isImagePending && (
             <a href={"/images"}>
-              <span className="inline-flex rounded-full bg-amber-100 ml-2 px-2 py-1 text-xs font-medium text-amber-900">Pending image upload</span>
+              <span className="inline-flex rounded-full bg-amber-100 ml-2 px-2 py-1 text-xs font-medium text-amber-900">
+                Pending image upload
+              </span>
             </a>
           )}
         </div>
@@ -109,10 +110,21 @@ export const DeviceDetail = () => {
                 {JSON.stringify(deviceData, null, 2)}
               </code>
             </pre>
-            <span className="text-red-700">* not all fields shown are relevant to a given device e.g. "container_image" for Virtual Machines</span>
+            <span className="text-red-700">
+              * not all fields shown are relevant to a given device e.g.
+              "container_image" for Virtual Machines
+            </span>
           </TabsContent>
           {/* use forcemount and CSS hide magic to preserve the canvas when TabsContent would otherwise be unrendered */}
-          <TabsContent forceMount value="vnc" className={currentTab === "vnc" ? "" : "absolute opacity-0 pointer-events-none -z-10"}>
+          <TabsContent
+            forceMount
+            value="vnc"
+            className={
+              currentTab === "vnc"
+                ? ""
+                : "absolute opacity-0 pointer-events-none -z-10"
+            }
+          >
             <div ref={vncDesktopNameRef} id="vncDesktopName" className="mt-3">
               Desktop: N/A
             </div>

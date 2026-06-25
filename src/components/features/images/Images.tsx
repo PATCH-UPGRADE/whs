@@ -331,10 +331,7 @@ const ImagesList = ({ images, onUploadPending }: ImagesListI) => {
         </thead>
         <tbody>
           {table.getRowModel().rows.map((row, index) => (
-            <tr
-              key={index}
-              className="odd:bg-white even:bg-muted"
-            >
+            <tr key={index} className="odd:bg-white even:bg-muted">
               {row.getVisibleCells().map((cell, index) => (
                 <td
                   key={index}

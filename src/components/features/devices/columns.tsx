@@ -239,7 +239,7 @@ export const columns: ColumnDef<Device>[] = [
                 setEditModalOpen(true);
               }}
               disabled={updateDevice.isPending}
-              >
+            >
               <SquarePen />
               {updateDevice.isPending ? "Updating..." : "Update"}
             </Button>
@@ -251,7 +251,7 @@ export const columns: ColumnDef<Device>[] = [
               }}
               disabled={deleteDevice.isPending}
               variant="destructive"
-              >
+            >
               <TrashIcon />
               Delete
             </Button>

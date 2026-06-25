@@ -8,6 +8,13 @@ import {
 import { PlusIcon, SlashIcon } from "lucide-react";
 import { useState } from "react";
 import { type UseFormReturn, useForm } from "react-hook-form";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -35,7 +42,6 @@ import {
   type PcapUploadFormValues,
   pcapUploadInputSchema,
 } from "./types";
-import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 
 export const PcapUploadForm = ({
   form,
@@ -186,7 +192,10 @@ export const PcapsContainer = () => {
         </BreadcrumbList>
       </Breadcrumb>
 
-      <Button className="self-end text-md bg-blue-800 mb-1" onClick={() => setOpen(true)}>
+      <Button
+        className="self-end text-md bg-blue-800 mb-1"
+        onClick={() => setOpen(true)}
+      >
         <PlusIcon />
         Add PCAP
       </Button>
@@ -242,10 +251,7 @@ const PcapsList = ({ pcaps }: PcapsListI) => {
         </thead>
         <tbody>
           {table.getRowModel().rows.map((row, index) => (
-            <tr
-              key={index}
-              className="odd:bg-white even:bg-muted"
-            >
+            <tr key={index} className="odd:bg-white even:bg-muted">
               {row.getVisibleCells().map((cell, index) => (
                 <td
                   key={index}

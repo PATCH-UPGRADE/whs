@@ -94,7 +94,10 @@ export const DeviceCreateUpdateModal = ({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="p-0 rounded-2xl w-6xl lg:max-w-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <DialogContent
+        className="p-0 rounded-2xl w-6xl lg:max-w-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         <DialogHeader className="px-6 py-4 border-b gap-1">
           <DialogTitle className="text-xl">{verbLabel} Device</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
