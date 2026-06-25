@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 const urls = [
   { name: "Devices", path: "/devices" },
-  { name: "Images", path: "/images" },
+  { name: "VM Images", path: "/images" },
   { name: "PCAPs", path: "/pcaps" },
   { name: "Deploy", path: "/topologies" }, // TODO: Make this proper once WHS backend supports multiple deploys
   { name: "Import / Export", path: "/import-export" },

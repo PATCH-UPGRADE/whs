@@ -8,7 +8,7 @@ export const columns: ColumnDef<Pcap>[] = [
   {
     accessorKey: "id",
     meta: { title: "id" },
-    header: "UUID",
+    header: "ID",
   },
   {
     accessorKey: "name",
@@ -23,6 +23,7 @@ export const columns: ColumnDef<Pcap>[] = [
   {
     id: "actions",
     enableHiding: false,
+    header: "Actions",
     cell: ({ row }) => {
       const data = row.original;
 

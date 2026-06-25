@@ -4,12 +4,6 @@ import { SquarePen, TrashIcon } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
-import { useUploadImage } from "../images/hooks";
-import { ImageUploadModal } from "../images/Images";
-import {
-  type ImageUploadFormValues,
-  imageUploadInputSchema,
-} from "../images/types";
 import { DeviceCreateUpdateModal } from "./Devices";
 import { useDeleteDevice, useUpdateDevice } from "./hooks";
 import {
@@ -23,7 +17,7 @@ export const columns: ColumnDef<Device>[] = [
   {
     accessorKey: "id",
     meta: { title: "id" },
-    header: "UUID",
+    header: "ID",
   },
   {
     accessorKey: "name",
@@ -124,7 +118,7 @@ export const columns: ColumnDef<Device>[] = [
           Pending upload
         </span>
       ) : (
-        <span className="text-sm text-muted-foreground">Uploaded</span>
+        <span className="">Uploaded</span>
       );
     },
   },
@@ -177,8 +171,8 @@ export const columns: ColumnDef<Device>[] = [
       // };
 
       const [editModalOpen, setEditModalOpen] = useState(false);
-      const [pendingImage, _setPendingImage] = useState<null>(null);
-      const [uploadImageModalOpen, setUploadImageModalOpen] = useState(false);
+      // const [pendingImage, _setPendingImage] = useState<null>(null);
+      // const [uploadImageModalOpen, setUploadImageModalOpen] = useState(false);
 
       const deviceForm = useForm<DeviceFormValues>({
         resolver: zodResolver(deviceInputSchema),
@@ -237,29 +231,31 @@ export const columns: ColumnDef<Device>[] = [
               </>
             ))
           } */}
-          <Button
-            className=""
-            onClick={(e) => {
-              e.stopPropagation();
-              setEditModalOpen(true);
-            }}
-            disabled={updateDevice.isPending}
-          >
-            <SquarePen />
-            {updateDevice.isPending ? "Updating..." : "Update"}
-          </Button>
-          <Button
-            className=""
-            onClick={(e) => {
-              e.stopPropagation();
-              handleRemove();
-            }}
-            disabled={deleteDevice.isPending}
-            variant="destructive"
-          >
-            <TrashIcon />
-            Delete
-          </Button>
+          <div className="justify-between">
+            <Button
+              className=""
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditModalOpen(true);
+              }}
+              disabled={updateDevice.isPending}
+              >
+              <SquarePen />
+              {updateDevice.isPending ? "Updating..." : "Update"}
+            </Button>
+            <Button
+              className=""
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRemove();
+              }}
+              disabled={deleteDevice.isPending}
+              variant="destructive"
+              >
+              <TrashIcon />
+              Delete
+            </Button>
+          </div>
 
           {editModalOpen && (
             <DeviceCreateUpdateModal

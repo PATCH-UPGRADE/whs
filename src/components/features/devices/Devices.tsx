@@ -94,7 +94,7 @@ export const DeviceCreateUpdateModal = ({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="p-0 rounded-2xl w-6xl lg:max-w-2xl overflow-hidden">
+      <DialogContent className="p-0 rounded-2xl w-6xl lg:max-w-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <DialogHeader className="px-6 py-4 border-b gap-1">
           <DialogTitle className="text-xl">{verbLabel} Device</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -635,7 +635,7 @@ export const DevicesContainer = () => {
       </Breadcrumb>
 
       <Button
-        className="self-end text-md bg-blue-800"
+        className="self-end text-md bg-blue-800 mb-1"
         onClick={() => setOpen(true)}
       >
         <PlusIcon />
@@ -703,7 +703,7 @@ const DevicesList = ({ devices }: DevicesListI) => {
                   params: { deviceId: row.original.id },
                 })
               }
-              className="cursor-pointer hover:bg-muted transition-colors"
+              className="odd:bg-white even:bg-muted cursor-pointer hover:bg-blue-100 transition-colors"
             >
               {row.getVisibleCells().map((cell, index) => (
                 <td

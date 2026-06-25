@@ -271,7 +271,7 @@ export const ImagesContainer = () => {
       </Breadcrumb>
 
       <Button
-        className="self-end text-md bg-blue-800"
+        className="self-end text-md bg-blue-800 mb-1"
         onClick={handleOpenNewUpload}
       >
         <PlusIcon />
@@ -312,17 +312,12 @@ const ImagesList = ({ images, onUploadPending }: ImagesListI) => {
 
   return (
     <div>
-      <table
-        style={{ border: "1px solid black", width: "100%", textAlign: "left" }}
-      >
+      <table className="w-full border border-black text-left">
         <thead>
           {table.getHeaderGroups().map((headerGroup, index) => (
             <tr key={index}>
               {headerGroup.headers.map((header, index) => (
-                <th
-                  key={index}
-                  style={{ borderBottom: "1px solid black", padding: "8px" }}
-                >
+                <th key={index} className="border-b border-black p-2">
                   {header.isPlaceholder
                     ? null
                     : flexRender(
@@ -336,11 +331,14 @@ const ImagesList = ({ images, onUploadPending }: ImagesListI) => {
         </thead>
         <tbody>
           {table.getRowModel().rows.map((row, index) => (
-            <tr key={index}>
+            <tr
+              key={index}
+              className="odd:bg-white even:bg-muted"
+            >
               {row.getVisibleCells().map((cell, index) => (
                 <td
                   key={index}
-                  style={{ padding: "8px", borderBottom: "1px solid #eee" }}
+                  className="border-black p-2 max-w-[125px] truncate"
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>

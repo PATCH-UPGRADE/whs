@@ -10,7 +10,7 @@ export const getImageColumns = ({
   {
     accessorKey: "id",
     meta: { title: "id" },
-    header: "UUID",
+    header: "ID",
   },
   {
     accessorKey: "name",
@@ -38,11 +38,11 @@ export const getImageColumns = ({
     header: "Status",
     cell: ({ row }) =>
       row.original.pending ? (
-        <span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900">
-          Pending upload
-        </span>
+        <a href={"/images"}>
+          <span className="inline-flex rounded-full bg-amber-100 px-2 py-1 font-medium text-amber-900">Pending upload</span>
+        </a>
       ) : (
-        <span className="text-sm text-muted-foreground">Uploaded</span>
+        <span className="">Uploaded</span>
       ),
   },
   {
@@ -52,7 +52,6 @@ export const getImageColumns = ({
       row.original.pending ? (
         <Button
           type="button"
-          size="sm"
           onClick={() => onUploadPending(row.original)}
         >
           Upload
