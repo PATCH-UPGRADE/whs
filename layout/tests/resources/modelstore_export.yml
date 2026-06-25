@@ -33,6 +33,24 @@ devices:
       id: debian_arm
       name: debian-13-nocloud-arm64.qcow2
       type: qcow2
+  tester02:
+    name: tester02
+    description: tester02
+    type: container
+    cloud_init: false
+    architecture: aarch64
+    cpus: 2
+    memory: 4096
+    disk: 20480
+    disk_controller: virtio
+    display: false
+    vm_image_id: null
+    container_image: docker.io/library/nginx:latest
+    dhcp: true
+    mac_address: null
+    ipv4_manual: null
+    gateway: null
+    dns_servers: []
   container01:
     name: container01
     description: Container test device

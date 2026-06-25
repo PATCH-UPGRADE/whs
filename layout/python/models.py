@@ -109,7 +109,7 @@ class ContainerImage(IdentifiedModel):
 
     name: str = Field(description='Name of the image. This should take the shape of an image:tag or image URI.', min_length=1, max_length=64)
     description: str = Field(description='Description or tags', default='')
-    version: float = Field(default=1.00)
+    version: str = Field(description='Version name or number or both', default='', max_length=24)
 
 class Device(IdentifiedModel):
     model_config = default_model_config
@@ -117,10 +117,10 @@ class Device(IdentifiedModel):
 
     name: str = Field(description='Name of the device', min_length=3, max_length=20)
     description: str = Field(description='Description or tags', default='')
-    type: Literal['vm', 'container'] = Field(description='Type of device: vm or container', default='vm')
+    type: Literal['vm', 'container', 'bareMetal'] = Field(description='Type of device: vm, container, or bare metal', default='vm')
     cloud_init: bool = Field(description='Use cloud init', default=True)
 
-    architecture: Literal['x86_64', 'aarch64'] = Field(description='Architecture of the device, x86_64 or aarch64', default='x86_64')
+    architecture: Literal['x86_64', 'aarch64', 'native'] = Field(description='Architecture of the device, x86_64 or aarch64. Native may also be selected for a container.', default='x86_64')
     cpus: int = Field(description='Number of CPUs assigned', default=2)
     memory: int = Field(description='System memory (in MB) assigned', default=4096)
     disk: int = Field(description='Disk size (in MB)', default=20*1024)
