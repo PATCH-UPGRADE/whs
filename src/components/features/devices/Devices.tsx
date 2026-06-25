@@ -191,117 +191,107 @@ export const DeviceCreateUpdateModal = ({
               />
 
               {selectedDeviceType === DeviceType.vm && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="vm_image_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Image *</FormLabel>
-                        <FormDescription>
-                          Type to search for an uploaded image OR type a custom
-                          image reference
-                        </FormDescription>
-                        <FormControl>
-                          <Input
-                            type="text"
-                            list="image-options"
-                            placeholder="e.g., nginx:latest"
-                            value={field.value ?? ""}
-                            onChange={(e) => field.onChange(e.target.value)}
-                          />
-                        </FormControl>
-                        <datalist id="image-options">
-                          {images?.map(({ id, name }, index) => (
-                            <option key={index} value={id}>
-                              {name}
-                            </option>
-                          ))}
-                        </datalist>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
+                <FormField
+                  control={form.control}
+                  name="vm_image_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Image *</FormLabel>
+                      <FormDescription>
+                        Type to search for an uploaded image OR type a custom
+                        image reference
+                      </FormDescription>
+                      <FormControl>
+                        <Input
+                          type="text"
+                          list="image-options"
+                          placeholder="e.g., nginx:latest"
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value)}
+                        />
+                      </FormControl>
+                      <datalist id="image-options">
+                        {images?.map(({ id, name }, index) => (
+                          <option key={index} value={id}>
+                            {name}
+                          </option>
+                        ))}
+                      </datalist>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               )}
 
               {selectedDeviceType === DeviceType.container && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="container_image_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Image *</FormLabel>
-                        <FormDescription>
-                          Type to search for an uploaded image OR type a custom
-                          image reference
-                        </FormDescription>
-                        <FormControl>
-                          <Input
-                            type="text"
-                            list="image-options"
-                            placeholder="e.g., nginx:latest"
-                            value={field.value ?? ""}
-                            onChange={(e) => field.onChange(e.target.value)}
-                          />
-                        </FormControl>
-                        <datalist id="image-options">
-                          {images?.map(({ id, name }, index) => (
-                            <option key={index} value={id}>
-                              {name}
-                            </option>
-                          ))}
-                        </datalist>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
+                <FormField
+                  control={form.control}
+                  name="container_image_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Image *</FormLabel>
+                      <FormDescription>
+                        Type to search for an uploaded image OR type a custom
+                        image reference
+                      </FormDescription>
+                      <FormControl>
+                        <Input
+                          type="text"
+                          list="image-options"
+                          placeholder="e.g., nginx:latest"
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value)}
+                        />
+                      </FormControl>
+                      <datalist id="image-options">
+                        {images?.map(({ id, name }, index) => (
+                          <option key={index} value={id}>
+                            {name}
+                          </option>
+                        ))}
+                      </datalist>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               )}
 
               {selectedDeviceType !== DeviceType.bareMetal && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="architecture"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Architecture Type *</FormLabel>
-                        <FormControl>
-                          <RadioGroup
-                            onValueChange={(val: string) => {
-                              field.onChange(val);
-                            }}
-                            value={field.value}
-                          >
-                            {deviceArchitectureTypeOptions.map((type, i) => (
-                              <FormItem
-                                key={i}
-                                className="flex gap-x-2 hover:border-primary/50 transition-colors"
-                              >
-                                <FormControl>
-                                  <RadioGroupItem
-                                    value={type}
-                                    className="rounded-lg border-2 border-primary hover:border-primary/50"
-                                  />
-                                </FormControl>
-                                <FormLabel htmlFor={type}>
-                                  {
-                                    DEVICE_ARCHITECTURE_TYPE_TO_DISPLAY_TEXT[
-                                      type
-                                    ]
-                                  }
-                                </FormLabel>
-                              </FormItem>
-                            ))}
-                          </RadioGroup>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
+                <FormField
+                  control={form.control}
+                  name="architecture"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Architecture Type *</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={(val: string) => {
+                            field.onChange(val);
+                          }}
+                          value={field.value}
+                        >
+                          {deviceArchitectureTypeOptions.map((type, i) => (
+                            <FormItem
+                              key={i}
+                              className="flex gap-x-2 hover:border-primary/50 transition-colors"
+                            >
+                              <FormControl>
+                                <RadioGroupItem
+                                  value={type}
+                                  className="rounded-lg border-2 border-primary hover:border-primary/50"
+                                />
+                              </FormControl>
+                              <FormLabel htmlFor={type}>
+                                {DEVICE_ARCHITECTURE_TYPE_TO_DISPLAY_TEXT[type]}
+                              </FormLabel>
+                            </FormItem>
+                          ))}
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               )}
 
               {selectedDeviceType === DeviceType.vm && (
@@ -478,149 +468,133 @@ export const DeviceCreateUpdateModal = ({
                 </>
               )}
 
-              {selectedDeviceType !== DeviceType.bareMetal && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="dhcp"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>DHCP *</FormLabel>
-                        <FormDescription>
-                          Enable DHCP for automatic addressing, or disable it
-                          and provide static network settings below.
-                        </FormDescription>
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              {/* <FormField
+                control={form.control}
+                name="dhcp"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>DHCP *</FormLabel>
+                    <FormDescription>
+                      Enable DHCP for automatic addressing, or disable it
+                      and provide static network settings below.
+                    </FormDescription>
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              /> */}
 
-                  <FormField
-                    control={form.control}
-                    name="ipv4_manual"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>ipv4</FormLabel>
-                        <FormDescription>
-                          Enter a static IPv4 address when DHCP is disabled.
-                        </FormDescription>
-                        <FormControl>
-                          <Input
-                            type="text"
-                            placeholder="e.g. 192.168.0.254"
-                            {...field}
-                            onChange={(e) => {
-                              field.onChange(
-                                e.target.value !== ""
-                                  ? e.target.value
-                                  : undefined,
-                              );
-                            }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
-              )}
+              <FormField
+                control={form.control}
+                name="mac_address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>MAC Address</FormLabel>
+                    <FormDescription>
+                      Required for BARE METAL devices. Set a specific MAC
+                      address instead of using an automatic assignment.
+                    </FormDescription>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="e.g. 00:1A:2B:3C:4D:5E"
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(
+                            e.target.value !== "" ? e.target.value : undefined,
+                          );
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-              {selectedDeviceType !== DeviceType.container && (
-                <FormField
-                  control={form.control}
-                  name="mac_address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>MAC Address</FormLabel>
-                      <FormDescription>
-                        Optionally set a specific MAC address instead of using
-                        an automatic assignment.
-                      </FormDescription>
-                      <FormControl>
-                        <Input
-                          type="text"
-                          placeholder="e.g. 00:1A:2B:3C:4D:5E"
-                          {...field}
-                          onChange={(e) => {
-                            field.onChange(
-                              e.target.value !== ""
-                                ? e.target.value
-                                : undefined,
-                            );
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
+              <FormField
+                control={form.control}
+                name="ipv4_manual"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>ipv4</FormLabel>
+                    <FormDescription>
+                      Enter a static IPv4 address when DHCP is disabled.
+                    </FormDescription>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="e.g. 192.168.0.254"
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(
+                            e.target.value !== "" ? e.target.value : undefined,
+                          );
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-              {selectedDeviceType === DeviceType.vm && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="gateway"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Default Gateway</FormLabel>
-                        <FormDescription>
-                          Enter the default gateway for a statically addressed
-                          device.
-                        </FormDescription>
-                        <FormControl>
-                          <Input
-                            type="text"
-                            placeholder="e.g. 192.168.0.1"
-                            {...field}
-                            onChange={(e) => {
-                              field.onChange(
-                                e.target.value !== ""
-                                  ? e.target.value
-                                  : undefined,
-                              );
-                            }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              <FormField
+                control={form.control}
+                name="gateway"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Default Gateway</FormLabel>
+                    <FormDescription>
+                      Enter the default gateway for a statically addressed
+                      device.
+                    </FormDescription>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="e.g. 192.168.0.1"
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(
+                            e.target.value !== "" ? e.target.value : undefined,
+                          );
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                  <FormField
-                    control={form.control}
-                    name="dns_servers"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>DNS Server(s)</FormLabel>
-                        <FormDescription>
-                          Set DNS servers manually as a comma-delimited list of
-                          IP addresses
-                        </FormDescription>
-                        <FormControl>
-                          <Input
-                            type="text"
-                            placeholder="e.g. 192.168.0.2,192.168.0.3, etc"
-                            {...field}
-                            onChange={(e) => {
-                              field.onChange(
-                                e.target.value.replace(/\//g, "").split(","),
-                              );
-                            }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
-              )}
+              <FormField
+                control={form.control}
+                name="dns_servers"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>DNS Server(s)</FormLabel>
+                    <FormDescription>
+                      Set DNS servers manually as a comma-delimited list of IP
+                      addresses
+                    </FormDescription>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="e.g. 192.168.0.2,192.168.0.3, etc"
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(
+                            e.target.value.replace(/\//g, "").split(","),
+                          );
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
           </form>
         </Form>
