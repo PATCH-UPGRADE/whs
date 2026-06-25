@@ -4,17 +4,65 @@ import carthage.libvirt
 from carthage.modeling import *
 from carthage.podman import *
 from carthage.oci import *
-from carthage.network import V4Config
+from carthage.network import V4Config, persistent_random_mac, NetworkConfig
 from carthage.systemd import SystemdNetworkModelMixin
+from carthage.modeling import NetworkConfigModel, injector_access
+from carthage.dependency_injection import inject, InjectionKey
 from carthage_base import *
 from .images import WhsRouter
 from .web_backend import web_server_key
 from .models import ModelStore, VmImage
 from pathlib import Path
+from typing import Optional
 
 
 root_path = Path(__file__).parent.parent
 assignments_path = root_path/"assignments.yml"
+
+
+@inject(device_model=InjectionKey('device_model'))
+def build_v4_config(device_model) -> Optional[V4Config]:
+    '''Build V4Config from device model, only setting non-falsy values.
+    
+    This function only sets v4_config attributes if the device model properties
+    are non-falsy. Gateway and DNS servers are typically not set on devices
+    (we don't want to override the V4Config in this case).
+    
+    dhcp is deprecated in the device model and is ignored here.
+    '''
+    if not device_model:
+        return None
+    
+    kwargs = {}
+    
+    # Only set address if non-falsy
+    if device_model.ipv4_manual:
+        kwargs['address'] = str(device_model.ipv4_manual)
+    
+    # Only set gateway if non-falsy (typically not set on devices)
+    if device_model.gateway:
+        kwargs['gateway'] = str(device_model.gateway)
+    
+    # Only set dns_servers if non-empty
+    if device_model.dns_servers:
+        kwargs['dns_servers'] = tuple(str(s) for s in device_model.dns_servers)
+    
+    # Only create V4Config if we have static configuration
+    if kwargs.get('address') or kwargs.get('gateway') or kwargs.get('dns_servers'):
+        return V4Config(**kwargs)
+    return None
+
+
+@inject(device_model=InjectionKey('device_model'))
+def build_mac(device_model) -> str:
+    '''Build MAC address from device model.'''
+    if device_model.mac_address:
+        return device_model.mac_address
+    return persistent_random_mac
+
+
+class DeviceNetworkConfig(NetworkConfigModel):
+    add('eth0', mac=build_mac, v4_config=build_v4_config, net=injector_access('bridge_net'))
 
 
 @inject(model_store=ModelStore, ainjector=AsyncInjector)
@@ -32,6 +80,7 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
         add_provider(podman_container_host, LocalPodmanContainerHost)
         add_provider(persistent_seed_path, assignments_path)
         add_provider(MachineDependency(f'router.{domain}'))
+        add_provider(InjectionKey(NetworkConfig), DeviceNetworkConfig, allow_multiple=True)
 
         @provides('bridge_net')
         class net(NetworkModel):
@@ -83,27 +132,10 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
             device_image = model_store.get_device_container_image(device)
 
             class whs_container(MachineModel):
+                device_model = dveice
                 add_provider(machine_implementation_key, dependency_quote(PodmanContainer))
                 add_provider(oci_container_image, device_image.name)
                 name = device_name
-                class net_config(NetworkConfigModel):
-                    if not device_dhcp:
-                        add(
-                            'eth0',
-                            mac=device_mac,
-                            net=injector_access('bridge_net'),
-                            v4_config=V4Config(dhcp=False,
-                                               address=device_ipv4,
-                                               gateway=device_gateway,
-                                               dns_servers=device_dns_servers)
-                        )
-                    else:
-                        add(
-                            'eth0',
-                            mac=device_mac,
-                            net=injector_access('bridge_net'),
-                            v4_config=V4Config(dhcp=device_dhcp),
-                        )
 
             return whs_container
         
@@ -139,24 +171,6 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
                 add_provider(machine_implementation_key, dependency_quote(carthage.libvirt.Vm))
                 add_provider(carthage.libvirt.vm_image_key, vm_image)
 
-                class net_config(NetworkConfigModel):
-                    if not device_dhcp:
-                        add(
-                            'eth0',
-                            mac=device_mac,
-                            net=injector_access('bridge_net'),
-                            v4_config=V4Config(dhcp=False,
-                                               address=device_ipv4,
-                                               gateway=device_gateway,
-                                               dns_servers=device_dns_servers)
-                        )
-                    else:
-                        add(
-                            'eth0',
-                            mac=device_mac,
-                            net=injector_access('bridge_net'),
-                            v4_config=V4Config(dhcp=device_dhcp),
-                        )
             return whs_vm
 
         for id, device in model_store.devices.items():
