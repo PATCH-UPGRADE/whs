@@ -131,14 +131,24 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
             device_dns_servers = device.dns_servers
             device_image = model_store.get_device_container_image(device)
 
+            @dynamic_name(device.name)
             class whs_container(MachineModel):
-                device_model = dveice
+                device_model = device
                 add_provider(machine_implementation_key, dependency_quote(PodmanContainer))
                 add_provider(oci_container_image, device_image.name)
                 name = device_name
 
             return whs_container
-        
+
+        def build_bare_metal(device):
+            @dynamic_name(device.name)
+            class whs_bare_metal(MachineModel):
+                device_model = device
+                name = device.name
+                add_provider(machine_implementation_key, dependency_quote(BareMetalMachine))
+
+            return whs_bare_metal
+
         def build_vm(device):
 
             device_dhcp = device.dhcp
@@ -178,5 +188,7 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
                 new_vm = build_vm(device)
             elif device.type == 'container':
                 new_container = build_container(device)
+            elif device.type == 'bareMetal':
+                new_bare_metal = build_bare_metal(device)
 
     return await ainjector(layout)
