@@ -221,6 +221,14 @@ async def upload_image(request:Request, model_store:model_store_dependency, file
         "message": "Success",
     })
 
+@api_v1.delete('/images/{image_id}')
+async def delete_image(image_id:str, model_store:model_store_dependency):
+    if not image_id in model_store.vm_images:
+        raise HTTPException(status_code=404, detail="Image not found")
+
+    model_store.vm_images.pop(image_id)
+    model_store.save()
+
 @api_v1.get("/pcaps")
 async def get_pcaps(model_store:model_store_dependency)-> list[Pcap]:
     return list(model_store.pcaps.values())

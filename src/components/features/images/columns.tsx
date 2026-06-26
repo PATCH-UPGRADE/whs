@@ -1,5 +1,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
+import { TrashIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useDeleteImage } from "./hooks";
 import type { Image } from "./types";
 
 export const getImageColumns = ({
@@ -48,15 +50,34 @@ export const getImageColumns = ({
   {
     id: "actions",
     header: "Actions",
-    cell: ({ row }) =>
-      row.original.pending ? (
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => onUploadPending(row.original)}
-        >
-          Upload
-        </Button>
-      ) : null,
+    cell: ({ row }) => {
+      const deleteImage = useDeleteImage();
+      const handleRemove = () => {
+        deleteImage.mutate({ id: row.original.id });
+      };
+
+      return (
+        <div className="flex justify-between">
+          {row.original.pending && (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => onUploadPending(row.original)}
+            >
+              Upload
+            </Button>
+          )}
+          <Button
+            className=""
+            onClick={handleRemove}
+            disabled={deleteImage.isPending}
+            variant="destructive"
+          >
+            <TrashIcon />
+            Delete
+          </Button>
+        </div>
+      );
+    },
   },
 ];
