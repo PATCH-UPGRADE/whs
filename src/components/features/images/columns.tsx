@@ -7,11 +7,11 @@ export const getImageColumns = ({
 }: {
   onUploadPending: (image: Image) => void;
 }): ColumnDef<Image>[] => [
-  {
-    accessorKey: "id",
-    meta: { title: "id" },
-    header: "ID",
-  },
+  // {
+  //   accessorKey: "id",
+  //   meta: { title: "id" },
+  //   header: "ID",
+  // },
   {
     accessorKey: "name",
     meta: { title: "name" },

@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Any, Callable, Literal, Optional, TypeVar, Union
+from typing import Any, Callable, Literal, Optional, TypeVar
 from pydantic import BaseModel, ConfigDict, Field, IPvAnyAddress, model_serializer, model_validator
 from pathlib import Path
 import yaml

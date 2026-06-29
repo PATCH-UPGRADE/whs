@@ -5,11 +5,11 @@ import { useDeletePcap } from "./hooks";
 import type { Pcap } from "./types";
 
 export const columns: ColumnDef<Pcap>[] = [
-  {
-    accessorKey: "id",
-    meta: { title: "id" },
-    header: "ID",
-  },
+  // {
+  //   accessorKey: "id",
+  //   meta: { title: "id" },
+  //   header: "ID",
+  // },
   {
     accessorKey: "name",
     meta: { title: "name" },

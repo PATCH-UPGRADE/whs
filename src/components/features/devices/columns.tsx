@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { DeviceCreateUpdateModal } from "./Devices";
 import { useDeleteDevice, useUpdateDevice } from "./hooks";
 import {
+  DEVICE_TYPE_TO_DISPLAY_TEXT,
   type Device,
   type DeviceFormValues,
   DeviceType,
@@ -14,11 +15,11 @@ import {
 } from "./types";
 
 export const columns: ColumnDef<Device>[] = [
-  {
-    accessorKey: "id",
-    meta: { title: "id" },
-    header: "ID",
-  },
+  // {
+  //   accessorKey: "id",
+  //   meta: { title: "id" },
+  //   header: "ID",
+  // },
   {
     accessorKey: "name",
     meta: { title: "name" },
@@ -33,6 +34,9 @@ export const columns: ColumnDef<Device>[] = [
     accessorKey: "type",
     meta: { title: "type" },
     header: "Device Type",
+    cell: ({ row }) => {
+      return DEVICE_TYPE_TO_DISPLAY_TEXT[row.original.type];
+    },
   },
   // {
   //   accessorKey: "architecture",
@@ -105,21 +109,25 @@ export const columns: ColumnDef<Device>[] = [
   //   header: "DNS Servers",
   // },
   {
-    accessorKey: "image",
     meta: { title: "pending" },
-    header: "Image Status",
+    header: "VM Image Status",
     cell: ({ row }) => {
-      const image =
-        row.original.type === DeviceType.vm
-          ? row.original.vm_image
-          : row.original.container_image;
-      return image?.pending ? (
-        <span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900">
-          Pending Upload
-        </span>
-      ) : (
-        <span className="">Uploaded</span>
-      );
+      if (row.original.type !== DeviceType.vm) {
+        return;
+      }
+
+      const image = row.original.vm_image;
+      if (!image) {
+        return <span className="">Image Field not set</span>;
+      } else if (image.pending) {
+        return (
+          <span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900">
+            Pending Upload
+          </span>
+        );
+      }
+
+      return <span className="">Uploaded</span>;
     },
   },
   {

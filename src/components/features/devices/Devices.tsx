@@ -38,6 +38,15 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { getImages } from "../images/hooks";
 import { columns } from "./columns";
 import { getDevices, useCreateDevice } from "./hooks";
@@ -200,27 +209,36 @@ export const DeviceCreateUpdateModal = ({
                   name="vm_image_id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Image *</FormLabel>
+                      <FormLabel>Image ID</FormLabel>
+
                       <FormDescription>
-                        Type to search for an uploaded image OR type a custom
-                        image reference
+                        Type to begin searching for a uploaded VM image (by
+                        filename)
                       </FormDescription>
+
                       <FormControl>
-                        <Input
-                          type="text"
-                          list="image-options"
-                          placeholder="e.g., nginx:latest"
+                        <Select
                           value={field.value ?? ""}
-                          onChange={(e) => field.onChange(e.target.value)}
-                        />
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select Image" />
+                          </SelectTrigger>
+
+                          <SelectContent>
+                            <SelectGroup>
+                              <SelectLabel>Select Image</SelectLabel>
+
+                              {images?.map(({ id, name, pending }, index) => (
+                                <SelectItem value={id} key={index}>
+                                  {pending ? `${name} (pending)` : name}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
                       </FormControl>
-                      <datalist id="image-options">
-                        {images?.map(({ id, name }, index) => (
-                          <option key={index} value={id}>
-                            {name}
-                          </option>
-                        ))}
-                      </datalist>
+
                       <FormMessage />
                     </FormItem>
                   )}
@@ -235,8 +253,8 @@ export const DeviceCreateUpdateModal = ({
                     <FormItem>
                       <FormLabel>Image *</FormLabel>
                       <FormDescription>
-                        Type to search for an uploaded image OR type a custom
-                        image reference
+                        Type an image reference like "nginx:latest" or
+                        "ghcr.io/my/cool/image:123"
                       </FormDescription>
                       <FormControl>
                         <Input
@@ -247,13 +265,6 @@ export const DeviceCreateUpdateModal = ({
                           onChange={(e) => field.onChange(e.target.value)}
                         />
                       </FormControl>
-                      <datalist id="image-options">
-                        {images?.map(({ id, name }, index) => (
-                          <option key={index} value={id}>
-                            {name}
-                          </option>
-                        ))}
-                      </datalist>
                       <FormMessage />
                     </FormItem>
                   )}
