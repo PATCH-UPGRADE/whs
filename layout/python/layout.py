@@ -19,6 +19,11 @@ from typing import Optional
 root_path = Path(__file__).parent.parent
 assignments_path = root_path/"assignments.yml"
 
+class AlreadyRunningMachine(Machine):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.running = True
+    
 
 @inject(device_model=InjectionKey('device_model'))
 def build_v4_config(device_model) -> Optional[V4Config]:
@@ -146,7 +151,7 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
                 device_model = device
                 name = device.name
                 add_provider(machine_implementation_key, dependency_quote(BareMetalMachine))
-                running = True
+                machine_mixins = (AlreadyRunningMachine,)
 
             return whs_bare_metal
 
