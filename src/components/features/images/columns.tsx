@@ -7,11 +7,11 @@ export const getImageColumns = ({
 }: {
   onUploadPending: (image: Image) => void;
 }): ColumnDef<Image>[] => [
-  {
-    accessorKey: "id",
-    meta: { title: "id" },
-    header: "UUID",
-  },
+  // {
+  //   accessorKey: "id",
+  //   meta: { title: "id" },
+  //   header: "ID",
+  // },
   {
     accessorKey: "name",
     meta: { title: "name" },
@@ -38,11 +38,11 @@ export const getImageColumns = ({
     header: "Status",
     cell: ({ row }) =>
       row.original.pending ? (
-        <span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900">
-          Pending upload
+        <span className="rounded-full border-2 bg-red-200 px-2 py-1 font-medium text-red-950">
+          Pending Upload
         </span>
       ) : (
-        <span className="text-sm text-muted-foreground">Uploaded</span>
+        <span className="">Uploaded</span>
       ),
   },
   {
@@ -50,11 +50,7 @@ export const getImageColumns = ({
     header: "Actions",
     cell: ({ row }) =>
       row.original.pending ? (
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => onUploadPending(row.original)}
-        >
+        <Button type="button" onClick={() => onUploadPending(row.original)}>
           Upload
         </Button>
       ) : null,

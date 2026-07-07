@@ -31,6 +31,8 @@ from .models import *
 from .dynamic_models import FrontendDeploymentResult, map_deployment_result
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from .models import DeviceWithImage
+
 def get_ainjector(connection: HTTPConnection)->AsyncInjector:
     return connection.app.state.layout.ainjector
 
@@ -87,8 +89,25 @@ async def regenerate_layout(request:Request):
 api_v1 = APIRouter(prefix="/api/v1")
 
 @api_v1.get("/devices")
-async def get_devices(model_store:model_store_dependency)-> list[Device]:
-    return list(model_store.devices.values())
+async def get_devices(model_store:model_store_dependency)-> list[DeviceWithImage]:
+    devices = list(model_store.devices.values())
+
+    devicesWithImage = []
+    for device in devices:
+        devicesWithImage.append(populate_one_device_image(device, model_store))
+
+    return devicesWithImage
+
+@api_v1.get("/devices/{device_id}")
+async def get_device(device_id:str, model_store:model_store_dependency) -> DeviceWithImage:
+    if not device_id in model_store.devices:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    device = model_store.devices[device_id]
+    return populate_one_device_image(device, model_store)
+
+def populate_one_device_image(device:Device, model_store:model_store_dependency):
+    return DeviceWithImage.from_store(device, model_store).model_dump(mode='json')
 
 @api_v1.post('/devices')
 async def create_device(device:Device, request:Request, model_store:model_store_dependency):

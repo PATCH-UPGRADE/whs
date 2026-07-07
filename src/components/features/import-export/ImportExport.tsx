@@ -131,13 +131,18 @@ export const ImportExportContainer = () => {
       <div className="flex flex-wrap gap-3">
         <Button
           type="button"
-          className="bg-blue-800"
+          className="bg-blue-700 hover:bg-blue-800 font-bold"
           onClick={() => setOpen(true)}
         >
           <UploadIcon />
           Import
         </Button>
-        <Button type="button" variant="outline" onClick={handleExport}>
+        <span className="text-center font-medium">OR</span>
+        <Button
+          type="button"
+          className="font-bold bg-green-700 hover:bg-green-800"
+          onClick={handleExport}
+        >
           <DownloadIcon />
           Export
         </Button>

@@ -25,6 +25,7 @@ export const carthageFetcher = async <T>(
       "Content-Type": "application/json",
       ...options?.headers,
     },
+    cache: "no-store", // let react-query handle caching
     ...options,
   });
 
@@ -36,6 +37,7 @@ export const carthageFetcher = async <T>(
 };
 
 // explicitly leave off the content-type so the browser can determine it
+// ^ this is necessary for file uploads with extra fields to work
 export const carthageFetcherUpload = async <T>(
   endpointUrl: string,
   options?: RequestInit,
