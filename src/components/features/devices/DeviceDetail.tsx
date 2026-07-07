@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
-import { Braces, ScreenShare, SlashIcon } from "lucide-react";
+import { Braces, ScreenShare, SlashIcon, SquareTerminal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   Breadcrumb,
@@ -12,17 +12,35 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ConsoleConnection from "./ConsoleConnection";
 import { getDevice } from "./hooks";
 import { DeviceType } from "./types";
-import VncConnection from "./VNCViewer";
+import VncConnection from "./VncConnection";
+
+const TABS = [
+  {
+    displayed: "Inspect",
+    value: "inspect",
+    icon: Braces,
+  },
+  {
+    displayed: "VNC",
+    value: "vnc",
+    icon: ScreenShare,
+  },
+  {
+    displayed: "Console",
+    value: "console",
+    icon: SquareTerminal,
+  },
+];
 
 export const DeviceDetail = () => {
   const { deviceId } = useParams({ from: "/devices/$deviceId" });
-  const [currentTab, setCurrentTab] = useState("inspect");
-  const vncDesktopNameRef = useRef<HTMLDivElement>(null);
-  const vncScreenRef = useRef<HTMLDivElement>(null);
-  const vncStatusRef = useRef<HTMLDivElement>(null);
-  const connectionRef = useRef<VncConnection>(null);
+  const [currentTab, setCurrentTab] = useState(TABS[0].value);
+
+  const vncConnectionRef = useRef<VncConnection>(null);
+  const consoleConnectionRef = useRef<ConsoleConnection>(null);
 
   const {
     data: deviceData,
@@ -35,11 +53,19 @@ export const DeviceDetail = () => {
   });
 
   useEffect(() => {
-    if (connectionRef.current !== null || isPending || isError) {
+    if (vncConnectionRef.current !== null || isPending || isError) {
       return;
     }
 
-    connectionRef.current = new VncConnection(deviceId);
+    vncConnectionRef.current = new VncConnection(deviceId);
+  }, [isPending, isError, deviceId]);
+
+  useEffect(() => {
+    if (consoleConnectionRef.current !== null || isPending || isError) {
+      return;
+    }
+
+    consoleConnectionRef.current = new ConsoleConnection(deviceId);
   }, [isPending, isError, deviceId]);
 
   if (isPending) {
@@ -91,16 +117,22 @@ export const DeviceDetail = () => {
 
       <Separator className="my-2 pb-0.5" />
 
-      <Tabs defaultValue="inspect" onValueChange={setCurrentTab} className="">
-        <TabsList className="p-1 bg-blue-100">
-          <TabsTrigger className="text-xl cursor-pointer" value="inspect">
-            <Braces />
-            Inspect
-          </TabsTrigger>
-          <TabsTrigger className="text-xl cursor-pointer" value="vnc">
-            <ScreenShare />
-            VNC
-          </TabsTrigger>
+      <Tabs
+        defaultValue={currentTab}
+        onValueChange={setCurrentTab}
+        className=""
+      >
+        <TabsList className="bg-blue-100">
+          {TABS.map((tab, index) => (
+            <TabsTrigger
+              key={index}
+              className="text-lg cursor-pointer"
+              value={tab.value}
+            >
+              <tab.icon className="w-12 h-4" />
+              {tab.displayed}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <div className="flex flex-col w-full h-full">
@@ -125,13 +157,23 @@ export const DeviceDetail = () => {
                 : "absolute opacity-0 pointer-events-none -z-10"
             }
           >
-            <div ref={vncDesktopNameRef} id="vncDesktopName" className="mt-3">
+            <div id="vncDesktopName" className="mt-3">
               Desktop: N/A
             </div>
-            <div ref={vncStatusRef} id="vncStatus">
-              Status: Not Connected
-            </div>
-            <div ref={vncScreenRef} id="vncScreen" className="mt-1 mx-0"></div>
+            <div id="vncStatus">Status: Not Connected</div>
+            <div id="vncScreen" className="mt-1 mx-0"></div>
+          </TabsContent>
+
+          <TabsContent
+            forceMount
+            value="console"
+            className={
+              currentTab === "console"
+                ? ""
+                : "absolute opacity-0 pointer-events-none -z-10"
+            }
+          >
+            <div id="consoleScreen" className="mt-1 mx-0"></div>
           </TabsContent>
         </div>
       </Tabs>

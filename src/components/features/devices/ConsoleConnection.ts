@@ -1,13 +1,15 @@
-import { Terminal } from '@xterm/xterm';
+import { Terminal } from "@xterm/xterm";
+import "@xterm/xterm/css/xterm.css";
 
 export default class ConsoleConnection {
+  consoleDiv: HTMLElement;
   term: Terminal;
   ws: WebSocket;
 
-  constructor(deviceId: string, consoleDiv: HTMLElement) {
-
+  constructor(deviceId: string) {
+    this.consoleDiv = document.getElementById("consoleScreen") as HTMLElement;
     this.term = new Terminal();
-    this.term.open(consoleDiv);
+    this.term.open(this.consoleDiv);
 
     const url = `ws://localhost:8080/api/v1/console_websocket/${deviceId}`;
     this.ws = new WebSocket(url);
@@ -20,10 +22,12 @@ export default class ConsoleConnection {
       if (event.wasClean) {
         this.writeClientMessage(`Disconnected (code ${event.code})`);
       } else {
-        this.writeClientMessage(`Connection lost unexpectedly (code ${event.code})`);
+        this.writeClientMessage(
+          `Connection lost unexpectedly (code ${event.code})`,
+        );
       }
       if (event.reason) {
-        this.writeClientMessage(`Reason: ${event.reason}`)
+        this.writeClientMessage(`Reason: ${event.reason}`);
       }
     };
 
