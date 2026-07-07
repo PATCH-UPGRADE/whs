@@ -5,11 +5,11 @@ import { useDeletePcap } from "./hooks";
 import type { Pcap } from "./types";
 
 export const columns: ColumnDef<Pcap>[] = [
-  {
-    accessorKey: "id",
-    meta: { title: "id" },
-    header: "UUID",
-  },
+  // {
+  //   accessorKey: "id",
+  //   meta: { title: "id" },
+  //   header: "ID",
+  // },
   {
     accessorKey: "name",
     meta: { title: "name" },
@@ -23,6 +23,7 @@ export const columns: ColumnDef<Pcap>[] = [
   {
     id: "actions",
     enableHiding: false,
+    header: "Actions",
     cell: ({ row }) => {
       const data = row.original;
 

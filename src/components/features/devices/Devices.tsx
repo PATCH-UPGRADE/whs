@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import {
   flexRender,
   getCoreRowModel,
@@ -37,6 +38,15 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { getImages } from "../images/hooks";
 import { columns } from "./columns";
 import { getDevices, useCreateDevice } from "./hooks";
@@ -96,7 +106,10 @@ export const DeviceCreateUpdateModal = ({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="p-0 rounded-2xl w-6xl lg:max-w-2xl overflow-hidden">
+      <DialogContent
+        className="p-0 rounded-2xl w-6xl lg:max-w-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         <DialogHeader className="px-6 py-4 border-b gap-1">
           <DialogTitle className="text-xl">{verbLabel} Device</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -196,27 +209,36 @@ export const DeviceCreateUpdateModal = ({
                   name="vm_image_id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Image *</FormLabel>
+                      <FormLabel>Image ID</FormLabel>
+
                       <FormDescription>
-                        Type to search for an uploaded image OR type a custom
-                        image reference
+                        Type to begin searching for a uploaded VM image (by
+                        filename)
                       </FormDescription>
+
                       <FormControl>
-                        <Input
-                          type="text"
-                          list="image-options"
-                          placeholder="e.g., nginx:latest"
+                        <Select
                           value={field.value ?? ""}
-                          onChange={(e) => field.onChange(e.target.value)}
-                        />
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select Image" />
+                          </SelectTrigger>
+
+                          <SelectContent>
+                            <SelectGroup>
+                              <SelectLabel>Select Image</SelectLabel>
+
+                              {images?.map(({ id, name, pending }, index) => (
+                                <SelectItem value={id} key={index}>
+                                  {pending ? `${name} (pending)` : name}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
                       </FormControl>
-                      <datalist id="image-options">
-                        {images?.map(({ id, name }, index) => (
-                          <option key={index} value={id}>
-                            {name}
-                          </option>
-                        ))}
-                      </datalist>
+
                       <FormMessage />
                     </FormItem>
                   )}
@@ -231,8 +253,8 @@ export const DeviceCreateUpdateModal = ({
                     <FormItem>
                       <FormLabel>Image *</FormLabel>
                       <FormDescription>
-                        Type to search for an uploaded image OR type a custom
-                        image reference
+                        Type an image reference like "nginx:latest" or
+                        "ghcr.io/my/cool/image:123"
                       </FormDescription>
                       <FormControl>
                         <Input
@@ -243,13 +265,6 @@ export const DeviceCreateUpdateModal = ({
                           onChange={(e) => field.onChange(e.target.value)}
                         />
                       </FormControl>
-                      <datalist id="image-options">
-                        {images?.map(({ id, name }, index) => (
-                          <option key={index} value={id}>
-                            {name}
-                          </option>
-                        ))}
-                      </datalist>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -689,7 +704,7 @@ export const DevicesContainer = () => {
       </Breadcrumb>
 
       <Button
-        className="self-end text-md bg-blue-800"
+        className="self-end text-md font-semibold bg-blue-800 mb-1 hover:bg-blue-700 transition-color"
         onClick={() => setOpen(true)}
       >
         <PlusIcon />
@@ -720,6 +735,8 @@ interface DevicesListI {
 }
 
 const DevicesList = ({ devices }: DevicesListI) => {
+  const navigate = useNavigate();
+
   const table = useReactTable({
     data: devices,
     columns: columns,
@@ -727,17 +744,15 @@ const DevicesList = ({ devices }: DevicesListI) => {
   });
 
   return (
-    <div>
-      <table
-        style={{ border: "1px solid black", width: "100%", textAlign: "left" }}
-      >
-        <thead>
+    <div className="overflow-x-auto rounded border border-gray-300">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-blue-200">
           {table.getHeaderGroups().map((headerGroup, index) => (
             <tr key={index}>
               {headerGroup.headers.map((header, index) => (
                 <th
                   key={index}
-                  style={{ borderBottom: "1px solid black", padding: "8px" }}
+                  className="border-b border-gray-200 px-4 py-3 font-bold uppercase text-md tracking-wide"
                 >
                   {header.isPlaceholder
                     ? null
@@ -750,13 +765,22 @@ const DevicesList = ({ devices }: DevicesListI) => {
             </tr>
           ))}
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-gray-100">
           {table.getRowModel().rows.map((row, index) => (
-            <tr key={index}>
+            <tr
+              key={index}
+              onClick={() =>
+                navigate({
+                  to: "/devices/$deviceId",
+                  params: { deviceId: row.original.id },
+                })
+              }
+              className="odd:bg-white even:bg-blue-50 cursor-pointer transition-colors hover:bg-gray-200 text-md"
+            >
               {row.getVisibleCells().map((cell, index) => (
                 <td
                   key={index}
-                  style={{ padding: "8px", borderBottom: "1px solid #eee" }}
+                  className="max-w-[125px] truncate px-4 py-3 text-gray-700"
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>

@@ -8,9 +8,9 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="flex">
+      <div className="flex w-full h-full">
         <AppSidebar />
-        <div className="flex flex-col p-16 w-auto">
+        <div className="flex flex-col w-full h-full p-16">
           <RouterProvider router={router} />
         </div>
       </div>

@@ -5,9 +5,16 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, SlashIcon } from "lucide-react";
 import { useState } from "react";
 import { type UseFormReturn, useForm } from "react-hook-form";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -173,11 +180,26 @@ export const PcapsContainer = () => {
   }
 
   return (
-    <div>
-      <Button className="text-lg bg-blue-800" onClick={() => setOpen(true)}>
+    <div className="flex flex-col">
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/pcaps">All PCAPs</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator>
+            <SlashIcon />
+          </BreadcrumbSeparator>
+        </BreadcrumbList>
+      </Breadcrumb>
+
+      <Button
+        className="self-end text-md font-semibold bg-blue-800 mb-1 hover:bg-blue-700 transition-color"
+        onClick={() => setOpen(true)}
+      >
         <PlusIcon />
         Add PCAP
       </Button>
+
       <PcapUploadForm
         form={form}
         open={open}
@@ -209,17 +231,15 @@ const PcapsList = ({ pcaps }: PcapsListI) => {
   });
 
   return (
-    <div className="p-2">
-      <table
-        style={{ border: "1px solid black", width: "100%", textAlign: "left" }}
-      >
-        <thead>
+    <div className="overflow-x-auto rounded border border-gray-300">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-blue-200">
           {table.getHeaderGroups().map((headerGroup, index) => (
             <tr key={index}>
               {headerGroup.headers.map((header, index) => (
                 <th
                   key={index}
-                  style={{ borderBottom: "1px solid black", padding: "8px" }}
+                  className="border-b border-gray-200 px-4 py-3 font-bold uppercase text-md tracking-wide"
                 >
                   {header.isPlaceholder
                     ? null
@@ -232,13 +252,16 @@ const PcapsList = ({ pcaps }: PcapsListI) => {
             </tr>
           ))}
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-gray-100">
           {table.getRowModel().rows.map((row, index) => (
-            <tr key={index}>
+            <tr
+              key={index}
+              className="odd:bg-white even:bg-blue-50 cursor-pointer transition-colors hover:bg-gray-200 text-md"
+            >
               {row.getVisibleCells().map((cell, index) => (
                 <td
                   key={index}
-                  style={{ padding: "8px", borderBottom: "1px solid #eee" }}
+                  className="max-w-[125px] truncate px-4 py-3 text-gray-700"
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
