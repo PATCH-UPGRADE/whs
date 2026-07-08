@@ -13,7 +13,7 @@ export const AppSidebar: React.FC = () => {
   const path = window.location.pathname;
 
   return (
-    <div className="flex h-screen bg-muted">
+    <div className="fixed left-0 top-0 flex h-screen bg-muted">
       <div className="w-64 bg-white border-r-3 border-gray-300">
         <div className="p-6 border-b-3 border-gray-300">
           <h1 className="text-2xl font-bold">W.H.S.</h1>

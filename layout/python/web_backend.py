@@ -461,7 +461,79 @@ async def vnc_websocket_proxy(
         await writer.wait_closed()
     except Exception:
         pass
-    print("Session closed")
+    print("VNC ws session closed")
+
+@api_v1.websocket("/console_websocket/{device_id}")
+async def serial_websocket_proxy(
+    ws: WebSocket,
+    device_id: str,
+    model_store: model_store_dependency,
+    libvirt_connection: libvirt_connection_dependency,
+):
+    device = model_store.devices.get(device_id)
+    if device is None:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    await ws.accept()
+
+    if device.type != 'vm':
+        await ws.close(code=1008, reason="Only VM devices support a serial console")
+        return
+
+    domain_name = f"whs-{device.name}"
+    loop = asyncio.get_event_loop()
+    try:
+        domain = libvirt_connection.lookupByName(domain_name)
+        stream = libvirt_connection.newStream(0)
+        domain.openConsole(None, stream, 0)
+    except (libvirt.libvirtError, OSError) as e:
+        print("ERROR", e)
+        await ws.close(code=1011)
+        return
+
+    async def ws_to_serial():
+        try:
+            while True:
+                data = await ws.receive_bytes()
+                await loop.run_in_executor(None, stream.send, data)
+        except WebSocketDisconnect:
+            print("Websocket client disconnected")
+        except Exception as e:
+            print("ws_to_serial() error:", e)
+
+    async def serial_to_ws():
+        try:
+            while True:
+                data = await loop.run_in_executor(None, stream.recv, 65536)
+                if not data:
+                    break
+                await ws.send_bytes(data)
+        except Exception as e:
+            print("serial_to_ws() error:", e)
+
+        try:
+            await ws.close()
+        except Exception:
+            pass
+
+    done, pending = await asyncio.wait([
+        asyncio.create_task(ws_to_serial(), name="ws-to-serial"),
+        asyncio.create_task(serial_to_ws(), name="serial-to-ws")
+    ], return_when=asyncio.FIRST_COMPLETED)
+
+    try:
+        stream.abortStream()
+    except Exception:
+        pass
+
+    for task in pending:
+        task.cancel()
+
+    try:
+        stream.finish()
+    except Exception:
+        pass
+    print("Serial console session closed")
 
 @inject(
     layout=InjectionKey(CarthageLayout, _ready=False),

@@ -83,7 +83,7 @@ export const DeviceDetail = () => {
       deviceData.container_image?.pending);
 
   return (
-    <div className="flex flex-col w-auto h-full">
+    <div className="flex flex-col w-auto h-screen">
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -135,7 +135,7 @@ export const DeviceDetail = () => {
           ))}
         </TabsList>
 
-        <div className="flex flex-col w-full h-full">
+        <div className="flex flex-col w-full h-auto">
           <TabsContent value="inspect">
             <pre className="w-full p-4 overflow-x-auto text-md font-mono rounded-lg bg-zinc-100 text-zinc-800 border border-zinc-200">
               <code className="w-auto">
@@ -157,10 +157,10 @@ export const DeviceDetail = () => {
                 : "absolute opacity-0 pointer-events-none -z-10"
             }
           >
-            <div id="vncDesktopName" className="mt-3">
+            {/* <div id="vncDesktopName" className="mt-3">
               Desktop: N/A
             </div>
-            <div id="vncStatus">Status: Not Connected</div>
+            <div id="vncStatus">Status: Not Connected</div> */}
             <div id="vncScreen" className="mt-1 mx-0"></div>
           </TabsContent>
 
