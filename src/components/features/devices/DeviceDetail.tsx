@@ -173,7 +173,10 @@ export const DeviceDetail = () => {
                 : "absolute opacity-0 pointer-events-none -z-10"
             }
           >
-            <div id="consoleScreen" className="mt-1 mx-0 inline-block"></div>
+            <div
+              id="consoleScreen"
+              className="mt-1 mx-0 inline-block bg-black p-2 border-2 rounded"
+            ></div>
           </TabsContent>
         </div>
       </Tabs>

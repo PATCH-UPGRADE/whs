@@ -52,7 +52,7 @@ export default class VncConnection {
     //   });
   }
 
-  setStatus(newStatus: string) {
+  setStatus(_newStatus: string) {
     // this.statusElement.textContent = `Status: ${newStatus}`;
   }
 
@@ -74,7 +74,7 @@ export default class VncConnection {
   //   this.rfb.sendCredentials({ password });
   // }
 
-  onDesktopName(e: unknown) {
+  onDesktopName(_e: unknown) {
     // ts-expect-error - NoVNC does not provide any Event type definitions
     // this.desktopNameElement.textContent = `Desktop: ${e.detail.name}`;
   }
