@@ -484,8 +484,8 @@ async def serial_websocket_proxy(
     loop = asyncio.get_event_loop()
     try:
         domain = libvirt_connection.lookupByName(domain_name)
-        stream = libvirt_connection.newStream(libvirt.VIR_STREAM_NONBLOCK)
-        domain.openConsole(None, stream, libvirt.VIR_DOMAIN_CONSOLE_SAFE)
+        stream = libvirt_connection.newStream(0)
+        domain.openConsole(None, stream, 0)
     except (libvirt.libvirtError, OSError) as e:
         print("ERROR", e)
         await ws.close(code=1011)
@@ -505,7 +505,6 @@ async def serial_websocket_proxy(
         try:
             while True:
                 data = await loop.run_in_executor(None, stream.recv, 65536)
-                print("data", data)
 
                 if not data:
                     break
@@ -523,16 +522,11 @@ async def serial_websocket_proxy(
         asyncio.create_task(serial_to_ws(), name="serial-to-ws")
     ], return_when=asyncio.FIRST_COMPLETED)
 
-    try:
-        stream.abort()
-    except Exception:
-        pass
-
     for task in pending:
         task.cancel()
 
     try:
-        stream.finish()
+        stream.abort()
     except Exception:
         pass
     print("Serial console session closed")
