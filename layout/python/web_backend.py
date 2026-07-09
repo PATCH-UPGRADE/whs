@@ -463,7 +463,7 @@ async def vnc_websocket_proxy(
         pass
     print("VNC ws session closed")
 
-@api_v1.websocket("/console_websocket/{device_id}")
+@api_v1.websocket("/serial_websocket/{device_id}")
 async def serial_websocket_proxy(
     ws: WebSocket,
     device_id: str,
@@ -484,8 +484,8 @@ async def serial_websocket_proxy(
     loop = asyncio.get_event_loop()
     try:
         domain = libvirt_connection.lookupByName(domain_name)
-        stream = libvirt_connection.newStream(0)
-        domain.openConsole(None, stream, 0)
+        stream = libvirt_connection.newStream(libvirt.VIR_STREAM_NONBLOCK)
+        domain.openConsole(None, stream, libvirt.VIR_DOMAIN_CONSOLE_SAFE)
     except (libvirt.libvirtError, OSError) as e:
         print("ERROR", e)
         await ws.close(code=1011)
@@ -505,6 +505,8 @@ async def serial_websocket_proxy(
         try:
             while True:
                 data = await loop.run_in_executor(None, stream.recv, 65536)
+                print("data", data)
+
                 if not data:
                     break
                 await ws.send_bytes(data)
@@ -522,7 +524,7 @@ async def serial_websocket_proxy(
     ], return_when=asyncio.FIRST_COMPLETED)
 
     try:
-        stream.abortStream()
+        stream.abort()
     except Exception:
         pass
 

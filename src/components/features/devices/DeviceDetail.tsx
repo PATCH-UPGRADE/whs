@@ -13,8 +13,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import ConsoleConnection from "./ConsoleConnection";
 import { getDevice } from "./hooks";
+import SerialConnection from "./SerialConnection";
 import { DeviceType } from "./types";
 import VncConnection from "./VncConnection";
 
@@ -25,13 +25,13 @@ const TABS = [
     iconElement: Braces,
   },
   {
-    displayed: "VNC",
+    displayed: "Display",
     value: "vnc",
     iconElement: ScreenShare,
   },
   {
-    displayed: "Console",
-    value: "console",
+    displayed: "Terminal",
+    value: "serial",
     iconElement: SquareTerminal,
   },
 ];
@@ -41,10 +41,10 @@ export const DeviceDetail = () => {
 
   const [currentTab, setCurrentTab] = useState(TABS[0].value);
   const [vncStarted, setVncStarted] = useState(false);
-  const [consoleStarted, setConsoleStarted] = useState(false);
+  const [serialStarted, setSerialStarted] = useState(false);
 
   const vncConnectionRef = useRef<VncConnection>(null);
-  const consoleConnectionRef = useRef<ConsoleConnection>(null);
+  const serialConnectionRef = useRef<SerialConnection>(null);
 
   const {
     data: deviceData,
@@ -56,7 +56,7 @@ export const DeviceDetail = () => {
     queryFn: () => getDevice(deviceId),
   });
 
-  const startVnc = () => {
+  const onClickVncStart = () => {
     if (vncConnectionRef.current) {
       return;
     }
@@ -65,13 +65,13 @@ export const DeviceDetail = () => {
     setVncStarted(true);
   };
 
-  const startConsole = () => {
-    if (consoleConnectionRef.current) {
+  const onClickSerialStart = () => {
+    if (serialConnectionRef.current) {
       return;
     }
 
-    consoleConnectionRef.current = new ConsoleConnection(deviceId);
-    setConsoleStarted(true);
+    serialConnectionRef.current = new SerialConnection(deviceId);
+    setSerialStarted(true);
   };
 
   useEffect(() => {
@@ -80,8 +80,8 @@ export const DeviceDetail = () => {
         vncConnectionRef.current.dispose();
       }
 
-      if (consoleConnectionRef.current !== null) {
-        consoleConnectionRef.current.dispose();
+      if (serialConnectionRef.current !== null) {
+        serialConnectionRef.current.dispose();
       }
     };
   }, []);
@@ -189,11 +189,11 @@ export const DeviceDetail = () => {
             >
               <button
                 type="button"
-                onClick={startVnc}
+                onClick={onClickVncStart}
                 disabled={vncStarted}
                 className="w-48 px-3 py-1.5 rounded bg-blue-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
-                {vncStarted ? "VNC Connected" : "Connect"}
+                Connect
               </button>
             </div>
 
@@ -208,9 +208,9 @@ export const DeviceDetail = () => {
 
           <TabsContent
             forceMount
-            value="console"
+            value="serial"
             className={
-              currentTab === "console"
+              currentTab === "serial"
                 ? ""
                 : "absolute h-0 overflow-hidden opacity-0 pointer-events-none -z-10"
             }
@@ -218,24 +218,24 @@ export const DeviceDetail = () => {
             <div
               className={cn(
                 "flex justify-center items-center w-96 h-64 bg-neutral-800 rounded",
-                consoleStarted && "hidden",
+                serialStarted && "hidden",
               )}
             >
               <button
                 type="button"
-                onClick={startConsole}
-                disabled={consoleStarted}
+                onClick={onClickSerialStart}
+                disabled={serialStarted}
                 className="w-48 px-3 py-1.5 rounded bg-blue-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
-                {consoleStarted ? "Console Connected" : "Connect"}
+                Connect
               </button>
             </div>
 
             <div
-              id="consoleScreen"
+              id="serialScreen"
               className={cn(
                 "inline-block bg-black p-2 border-2 rounded",
-                !consoleStarted && "hidden",
+                !serialStarted && "hidden",
               )}
             />
           </TabsContent>

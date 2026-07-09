@@ -1,22 +1,22 @@
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 
-export default class ConsoleConnection {
+export default class SerialConnection {
   consoleDiv: HTMLElement;
   term: Terminal;
   ws: WebSocket;
 
   constructor(deviceId: string) {
-    this.consoleDiv = document.getElementById("consoleScreen") as HTMLElement;
+    this.consoleDiv = document.getElementById("serialScreen") as HTMLElement;
     this.term = new Terminal();
     this.term.open(this.consoleDiv);
 
-    const url = `ws://localhost:8080/api/v1/console_websocket/${deviceId}`;
+    const url = `ws://localhost:8080/api/v1/serial_websocket/${deviceId}`;
     this.ws = new WebSocket(url);
     this.ws.binaryType = "arraybuffer";
 
     this.ws.onopen = (): void => {
-      this.writeClientMessage("Connected to console");
+      this.writeClientMessage("Connected to terminal");
       this.ws.send(new TextEncoder().encode("\r"));
     };
 
