@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import shutil
 import struct
+import threading
 from typing import Annotated, get_args
 from fastapi.responses import JSONResponse, Response
 import uvicorn
@@ -27,6 +28,8 @@ from carthage import (
     deployment)
 from carthage.modeling import CarthageLayout
 from carthage.dependency_injection import instantiation_roots
+
+from layout.python.helpers import SerialConsoleSessionManager
 from .models import *
 from .dynamic_models import FrontendDeploymentResult, map_deployment_result
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -83,7 +86,20 @@ async def regenerate_layout(request:Request):
         ainjector = AsyncInjector(injector)
         state.layout = await ainjector.get_instance_async(CarthageLayout)
 
+# Non-Blocking serial console stream buffers aren't automatically filled
+# instead kernal buffer reads occur when the event loop fires, unlike Blocking streams
+libvirt.virEventRegisterDefaultImpl()
 
+def _run_libvirt_event_loop():
+    while True:
+        libvirt.virEventRunDefaultImpl()
+
+_libvirt_event_thread = threading.Thread(
+    target=_run_libvirt_event_loop,
+    name="libvirt-event-loop",
+    daemon=True,
+)
+_libvirt_event_thread.start()
 
 
 api_v1 = APIRouter(prefix="/api/v1")
@@ -463,6 +479,8 @@ async def vnc_websocket_proxy(
         pass
     print("VNC ws session closed")
 
+serial_console_session_manager = SerialConsoleSessionManager()
+
 @api_v1.websocket("/serial_websocket/{device_id}")
 async def serial_websocket_proxy(
     ws: WebSocket,
@@ -481,54 +499,29 @@ async def serial_websocket_proxy(
         return
 
     domain_name = f"whs-{device.name}"
-    loop = asyncio.get_event_loop()
     try:
-        domain = libvirt_connection.lookupByName(domain_name)
-        stream = libvirt_connection.newStream(0)
-        domain.openConsole(None, stream, 0)
+        session = await serial_console_session_manager.get_or_create_session(libvirt_connection, domain_name)
     except (libvirt.libvirtError, OSError) as e:
         print("ERROR", e)
         await ws.close(code=1011)
         return
 
-    async def ws_to_serial():
-        try:
-            while True:
-                data = await ws.receive_bytes()
-                await loop.run_in_executor(None, stream.send, data)
-        except WebSocketDisconnect:
-            print("Websocket client disconnected")
-        except Exception as e:
-            print("ws_to_serial() error:", e)
-
-    async def serial_to_ws():
-        try:
-            while True:
-                data = await loop.run_in_executor(None, stream.recv, 65536)
-
-                if not data:
-                    break
-                await ws.send_bytes(data)
-        except Exception as e:
-            print("serial_to_ws() error:", e)
-
-        try:
-            await ws.close()
-        except Exception:
-            pass
-
-    done, pending = await asyncio.wait([
-        asyncio.create_task(ws_to_serial(), name="ws-to-serial"),
-        asyncio.create_task(serial_to_ws(), name="serial-to-ws")
-    ], return_when=asyncio.FIRST_COMPLETED)
-
-    for task in pending:
-        task.cancel()
+    session.subscribers.add(ws)
 
     try:
-        stream.abort()
-    except Exception:
-        pass
+        while True:
+            data = await ws.receive_bytes()
+            await session.send(data)
+
+    except WebSocketDisconnect:
+        print("Websocket client disconnected")
+    finally:
+        session.subscribers.discard(ws)
+
+        if not session.subscribers:
+            session.close()
+            serial_console_session_manager.remove_session(domain_name)
+
     print("Serial console session closed")
 
 @inject(
