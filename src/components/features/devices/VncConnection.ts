@@ -83,6 +83,10 @@ export default class VncConnection {
   //   this.rfb.sendCtrlAltDel();
   // }
 
+  dispose() {
+    this.rfb.disconnect();
+  }
+
   readQueryVariable(name: string, defaultValue: string) {
     const re = new RegExp(`.*[?&]${name}=([^&#]*)`);
     const match = document.location.href.match(re);

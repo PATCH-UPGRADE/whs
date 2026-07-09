@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import ConsoleConnection from "./ConsoleConnection";
 import { getDevice } from "./hooks";
 import { DeviceType } from "./types";
@@ -21,23 +22,26 @@ const TABS = [
   {
     displayed: "Inspect",
     value: "inspect",
-    icon: Braces,
+    iconElement: Braces,
   },
   {
     displayed: "VNC",
     value: "vnc",
-    icon: ScreenShare,
+    iconElement: ScreenShare,
   },
   {
     displayed: "Console",
     value: "console",
-    icon: SquareTerminal,
+    iconElement: SquareTerminal,
   },
 ];
 
 export const DeviceDetail = () => {
   const { deviceId } = useParams({ from: "/devices/$deviceId" });
+
   const [currentTab, setCurrentTab] = useState(TABS[0].value);
+  const [vncStarted, setVncStarted] = useState(false);
+  const [consoleStarted, setConsoleStarted] = useState(false);
 
   const vncConnectionRef = useRef<VncConnection>(null);
   const consoleConnectionRef = useRef<ConsoleConnection>(null);
@@ -52,21 +56,35 @@ export const DeviceDetail = () => {
     queryFn: () => getDevice(deviceId),
   });
 
-  useEffect(() => {
-    if (vncConnectionRef.current !== null || isPending || isError) {
+  const startVnc = () => {
+    if (vncConnectionRef.current) {
       return;
     }
 
     vncConnectionRef.current = new VncConnection(deviceId);
-  }, [isPending, isError, deviceId]);
+    setVncStarted(true);
+  };
 
-  useEffect(() => {
-    if (consoleConnectionRef.current !== null || isPending || isError) {
+  const startConsole = () => {
+    if (consoleConnectionRef.current) {
       return;
     }
 
     consoleConnectionRef.current = new ConsoleConnection(deviceId);
-  }, [isPending, isError, deviceId]);
+    setConsoleStarted(true);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (vncConnectionRef.current !== null) {
+        vncConnectionRef.current.dispose();
+      }
+
+      if (consoleConnectionRef.current !== null) {
+        consoleConnectionRef.current.dispose();
+      }
+    };
+  }, []);
 
   if (isPending) {
     return <div>Fetching Device...</div>;
@@ -83,7 +101,7 @@ export const DeviceDetail = () => {
       deviceData.container_image?.pending);
 
   return (
-    <div className="flex flex-col w-auto h-screen">
+    <div className="flex flex-col w-auto">
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -129,15 +147,15 @@ export const DeviceDetail = () => {
               className="text-lg cursor-pointer"
               value={tab.value}
             >
-              <tab.icon className="w-12 h-4" />
+              <tab.iconElement />
               {tab.displayed}
             </TabsTrigger>
           ))}
         </TabsList>
 
-        <div className="flex flex-col w-full h-auto">
+        <div className="w-full">
           <TabsContent value="inspect">
-            <pre className="w-full p-4 overflow-x-auto text-md font-mono rounded-lg bg-zinc-100 text-zinc-800 border border-zinc-200">
+            <pre className="w-full p-4 overflow-x-auto text-md font-mono rounded bg-zinc-100 text-zinc-800 border border-zinc-200">
               <code className="w-auto">
                 {JSON.stringify(deviceData, null, 2)}
               </code>
@@ -147,21 +165,45 @@ export const DeviceDetail = () => {
               "container_image" for Virtual Machines
             </span>
           </TabsContent>
-          {/* use forcemount and CSS hide magic to preserve the canvas when TabsContent would otherwise be unrendered */}
+
+          {/* use forcemount and CSS magic to prevent important elements from unrendering */}
           <TabsContent
             forceMount
             value="vnc"
             className={
               currentTab === "vnc"
                 ? ""
-                : "absolute opacity-0 pointer-events-none -z-10"
+                : "absolute h-0 overflow-hidden opacity-0 pointer-events-none -z-10"
             }
           >
             {/* <div id="vncDesktopName" className="mt-3">
               Desktop: N/A
             </div>
             <div id="vncStatus">Status: Not Connected</div> */}
-            <div id="vncScreen" className="mt-1 mx-0"></div>
+
+            <div
+              className={cn(
+                "flex justify-center items-center w-96 h-64 bg-neutral-800 rounded",
+                vncStarted && "hidden",
+              )}
+            >
+              <button
+                type="button"
+                onClick={startVnc}
+                disabled={vncStarted}
+                className="w-48 px-3 py-1.5 rounded bg-blue-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {vncStarted ? "VNC Connected" : "Connect"}
+              </button>
+            </div>
+
+            <div
+              id="vncScreen"
+              className={cn(
+                "w-fit bg-black p-2 border-2 rounded",
+                !vncStarted && "hidden",
+              )}
+            ></div>
           </TabsContent>
 
           <TabsContent
@@ -170,13 +212,32 @@ export const DeviceDetail = () => {
             className={
               currentTab === "console"
                 ? ""
-                : "absolute opacity-0 pointer-events-none -z-10"
+                : "absolute h-0 overflow-hidden opacity-0 pointer-events-none -z-10"
             }
           >
             <div
+              className={cn(
+                "flex justify-center items-center w-96 h-64 bg-neutral-800 rounded",
+                consoleStarted && "hidden",
+              )}
+            >
+              <button
+                type="button"
+                onClick={startConsole}
+                disabled={consoleStarted}
+                className="w-48 px-3 py-1.5 rounded bg-blue-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {consoleStarted ? "Console Connected" : "Connect"}
+              </button>
+            </div>
+
+            <div
               id="consoleScreen"
-              className="mt-1 mx-0 inline-block bg-black p-2 border-2 rounded"
-            ></div>
+              className={cn(
+                "inline-block bg-black p-2 border-2 rounded",
+                !consoleStarted && "hidden",
+              )}
+            />
           </TabsContent>
         </div>
       </Tabs>

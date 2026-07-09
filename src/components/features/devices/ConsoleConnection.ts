@@ -16,7 +16,7 @@ export default class ConsoleConnection {
     this.ws.binaryType = "arraybuffer";
 
     this.ws.onopen = (): void => {
-      this.writeClientMessage("Connected to serial console");
+      this.writeClientMessage("Connected to console");
       this.ws.send(new TextEncoder().encode("\r"));
     };
 
@@ -54,6 +54,8 @@ export default class ConsoleConnection {
   }
 
   public writeClientMessage(message: string): void {
-    this.term.write(`\r\n*** ${message} ***\r\n`);
+    this.term.write(
+      `\r\n\x1b[33m*** Client Message: ${message} ***\x1b[0m\r\n`,
+    );
   }
 }
