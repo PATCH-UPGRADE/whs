@@ -29,7 +29,7 @@ from carthage import (
 from carthage.modeling import CarthageLayout
 from carthage.dependency_injection import instantiation_roots
 
-from layout.python.helpers import SerialConsoleSessionManager
+from .helpers import SerialConsoleSessionManager
 from .models import *
 from .dynamic_models import FrontendDeploymentResult, map_deployment_result
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -511,7 +511,7 @@ async def serial_websocket_proxy(
     try:
         while True:
             data = await ws.receive_bytes()
-            await session.send(data)
+            await session.send_to_console(data)
 
     except WebSocketDisconnect:
         print("Websocket client disconnected")
