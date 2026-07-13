@@ -181,7 +181,12 @@ export const DeviceDetail = () => {
             </div>
             <div id="vncStatus">Status: Not Connected</div> */}
 
-            <VncConnectBanner deviceType={deviceData.type} hasGraphics={deviceData.display} vncStarted={vncStarted} onClickVncStart={onClickVncStart}/>
+            <VncConnectBanner
+              deviceType={deviceData.type}
+              hasGraphics={deviceData.display}
+              vncStarted={vncStarted}
+              onClickVncStart={onClickVncStart}
+            />
 
             <div
               id="vncScreen"
@@ -201,7 +206,11 @@ export const DeviceDetail = () => {
                 : "absolute h-0 overflow-hidden opacity-0 pointer-events-none -z-10"
             }
           >
-            <SerialConnectBanner deviceType={deviceData.type} serialStarted={serialStarted} onClickSerialStart={onClickSerialStart}/>
+            <SerialConnectBanner
+              deviceType={deviceData.type}
+              serialStarted={serialStarted}
+              onClickSerialStart={onClickSerialStart}
+            />
 
             <div
               id="serialScreen"
@@ -224,18 +233,23 @@ interface VncConnectBannerProps {
   onClickVncStart: () => void;
 }
 
-const VncConnectBanner = ({ deviceType, hasGraphics, vncStarted, onClickVncStart }: VncConnectBannerProps) => {
+const VncConnectBanner = ({
+  deviceType,
+  hasGraphics,
+  vncStarted,
+  onClickVncStart,
+}: VncConnectBannerProps) => {
   let isError = false;
   let errorMessage = "";
-  
+
   if (deviceType !== DeviceType.vm) {
     isError = true;
-    errorMessage = "Available on VM Devices only"
+    errorMessage = "Available on VM Devices only";
   } else if (deviceType === DeviceType.vm && !hasGraphics) {
     isError = true;
-    errorMessage = "\"Graphics\" must be enabled"
+    errorMessage = '"Graphics" must be enabled';
   }
-  
+
   return (
     <div
       className={cn(
@@ -243,10 +257,8 @@ const VncConnectBanner = ({ deviceType, hasGraphics, vncStarted, onClickVncStart
         vncStarted && "hidden",
       )}
     >
-      { isError ? (
-        <div
-          className="flex justify-center w-64 px-3 py-1.5 rounded bg-red-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-        >
+      {isError ? (
+        <div className="flex justify-center w-64 px-3 py-1.5 rounded bg-red-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
           {errorMessage}
         </div>
       ) : (
@@ -269,15 +281,19 @@ interface SerialConnectBannerProps {
   onClickSerialStart: () => void;
 }
 
-const SerialConnectBanner = ({ deviceType, serialStarted, onClickSerialStart }: SerialConnectBannerProps) => {
+const SerialConnectBanner = ({
+  deviceType,
+  serialStarted,
+  onClickSerialStart,
+}: SerialConnectBannerProps) => {
   let isError = false;
   let errorMessage = "";
-  
+
   if (deviceType !== DeviceType.vm) {
     isError = true;
-    errorMessage = "Available on VM Devices only"
+    errorMessage = "Available on VM Devices only";
   }
-  
+
   return (
     <div
       className={cn(
@@ -285,10 +301,8 @@ const SerialConnectBanner = ({ deviceType, serialStarted, onClickSerialStart }: 
         serialStarted && "hidden",
       )}
     >
-      { isError ? (
-        <div
-          className="flex justify-center w-64 px-3 py-1.5 rounded bg-red-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-        >
+      {isError ? (
+        <div className="flex justify-center w-64 px-3 py-1.5 rounded bg-red-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
           {errorMessage}
         </div>
       ) : (
