@@ -181,7 +181,7 @@ export const DeviceDetail = () => {
             </div>
             <div id="vncStatus">Status: Not Connected</div> */}
 
-            <VncHeadsUp deviceType={deviceData.type} hasGraphics={deviceData.display} vncStarted={vncStarted} onClickVncStart={onClickVncStart}/>
+            <VncConnectBanner deviceType={deviceData.type} hasGraphics={deviceData.display} vncStarted={vncStarted} onClickVncStart={onClickVncStart}/>
 
             <div
               id="vncScreen"
@@ -201,7 +201,7 @@ export const DeviceDetail = () => {
                 : "absolute h-0 overflow-hidden opacity-0 pointer-events-none -z-10"
             }
           >
-            <SerialHeadsUp deviceType={deviceData.type} serialStarted={serialStarted} onClickSerialStart={onClickSerialStart}/>
+            <SerialConnectBanner deviceType={deviceData.type} serialStarted={serialStarted} onClickSerialStart={onClickSerialStart}/>
 
             <div
               id="serialScreen"
@@ -217,14 +217,14 @@ export const DeviceDetail = () => {
   );
 };
 
-interface VncHeadsUpProps {
+interface VncConnectBannerProps {
   deviceType: string;
   hasGraphics: boolean;
   vncStarted: boolean;
   onClickVncStart: () => void;
 }
 
-const VncHeadsUp = ({ deviceType, hasGraphics, vncStarted, onClickVncStart }: VncHeadsUpProps) => {
+const VncConnectBanner = ({ deviceType, hasGraphics, vncStarted, onClickVncStart }: VncConnectBannerProps) => {
   let isError = false;
   let errorMessage = "";
   
@@ -263,13 +263,13 @@ const VncHeadsUp = ({ deviceType, hasGraphics, vncStarted, onClickVncStart }: Vn
   );
 };
 
-interface SerialHeadsUpProps {
+interface SerialConnectBannerProps {
   deviceType: string;
   serialStarted: boolean;
   onClickSerialStart: () => void;
 }
 
-const SerialHeadsUp = ({ deviceType, serialStarted, onClickSerialStart }: SerialHeadsUpProps) => {
+const SerialConnectBanner = ({ deviceType, serialStarted, onClickSerialStart }: SerialConnectBannerProps) => {
   let isError = false;
   let errorMessage = "";
   
