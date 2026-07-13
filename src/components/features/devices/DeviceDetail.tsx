@@ -25,12 +25,12 @@ const TABS = [
     iconElement: Braces,
   },
   {
-    displayed: "Display",
+    displayed: "Desktop",
     value: "vnc",
     iconElement: ScreenShare,
   },
   {
-    displayed: "Terminal",
+    displayed: "Console",
     value: "serial",
     iconElement: SquareTerminal,
   },
@@ -181,21 +181,7 @@ export const DeviceDetail = () => {
             </div>
             <div id="vncStatus">Status: Not Connected</div> */}
 
-            <div
-              className={cn(
-                "flex justify-center items-center w-96 h-64 bg-neutral-800 rounded",
-                vncStarted && "hidden",
-              )}
-            >
-              <button
-                type="button"
-                onClick={onClickVncStart}
-                disabled={vncStarted}
-                className="w-48 px-3 py-1.5 rounded bg-blue-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-              >
-                Connect
-              </button>
-            </div>
+            <VncHeadsUp deviceType={deviceData.type} hasGraphics={deviceData.display} vncStarted={vncStarted} onClickVncStart={onClickVncStart}/>
 
             <div
               id="vncScreen"
@@ -215,21 +201,7 @@ export const DeviceDetail = () => {
                 : "absolute h-0 overflow-hidden opacity-0 pointer-events-none -z-10"
             }
           >
-            <div
-              className={cn(
-                "flex justify-center items-center w-96 h-64 bg-neutral-800 rounded",
-                serialStarted && "hidden",
-              )}
-            >
-              <button
-                type="button"
-                onClick={onClickSerialStart}
-                disabled={serialStarted}
-                className="w-48 px-3 py-1.5 rounded bg-blue-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-              >
-                Connect
-              </button>
-            </div>
+            <SerialHeadsUp deviceType={deviceData.type} serialStarted={serialStarted} onClickSerialStart={onClickSerialStart}/>
 
             <div
               id="serialScreen"
@@ -241,6 +213,94 @@ export const DeviceDetail = () => {
           </TabsContent>
         </div>
       </Tabs>
+    </div>
+  );
+};
+
+interface VncHeadsUpProps {
+  deviceType: string;
+  hasGraphics: boolean;
+  vncStarted: boolean;
+  onClickVncStart: () => void;
+}
+
+const VncHeadsUp = ({ deviceType, hasGraphics, vncStarted, onClickVncStart }: VncHeadsUpProps) => {
+  let isError = false;
+  let errorMessage = "";
+  
+  if (deviceType !== DeviceType.vm) {
+    isError = true;
+    errorMessage = "Available on VM Devices only"
+  } else if (deviceType === DeviceType.vm && !hasGraphics) {
+    isError = true;
+    errorMessage = "\"Graphics\" must be enabled"
+  }
+  
+  return (
+    <div
+      className={cn(
+        "flex justify-center items-center w-96 h-64 bg-neutral-800 rounded",
+        vncStarted && "hidden",
+      )}
+    >
+      { isError ? (
+        <div
+          className="flex justify-center w-64 px-3 py-1.5 rounded bg-red-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        >
+          {errorMessage}
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={onClickVncStart}
+          disabled={vncStarted}
+          className="w-48 px-3 py-1.5 rounded bg-blue-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        >
+          Connect
+        </button>
+      )}
+    </div>
+  );
+};
+
+interface SerialHeadsUpProps {
+  deviceType: string;
+  serialStarted: boolean;
+  onClickSerialStart: () => void;
+}
+
+const SerialHeadsUp = ({ deviceType, serialStarted, onClickSerialStart }: SerialHeadsUpProps) => {
+  let isError = false;
+  let errorMessage = "";
+  
+  if (deviceType !== DeviceType.vm) {
+    isError = true;
+    errorMessage = "Available on VM Devices only"
+  }
+  
+  return (
+    <div
+      className={cn(
+        "flex justify-center items-center w-96 h-64 bg-neutral-800 rounded",
+        serialStarted && "hidden",
+      )}
+    >
+      { isError ? (
+        <div
+          className="flex justify-center w-64 px-3 py-1.5 rounded bg-red-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        >
+          {errorMessage}
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={onClickSerialStart}
+          disabled={serialStarted}
+          className="w-48 px-3 py-1.5 rounded bg-blue-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        >
+          Connect
+        </button>
+      )}
     </div>
   );
 };
