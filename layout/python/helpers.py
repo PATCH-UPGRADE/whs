@@ -22,7 +22,7 @@ class SerialConsoleSession:
         )
 
     def _on_receive_event(self, stream, events, opaque):
-        self.loop.call_soon_threadsafe(asyncio.ensure_future, self._read_and_send_to_client_loop())
+        asyncio.run_coroutine_threadsafe(self._read_and_send_to_client_loop(), self.loop)
 
     async def _read_and_send_to_client_loop(self):
         while True:
@@ -96,10 +96,8 @@ class SerialConsoleSessionManager:
                 return session
             
             session = SerialConsoleSession(libvirt_connection, domain_name)
-            # await session.open()
             self.sessions[domain_name] = session
             return session
-            
-        
+
     def remove_session(self, domain_name):
         self.sessions.pop(domain_name, None)
