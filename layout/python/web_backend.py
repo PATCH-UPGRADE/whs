@@ -29,7 +29,7 @@ from carthage import (
 from carthage.modeling import CarthageLayout
 from carthage.dependency_injection import instantiation_roots
 
-from .helpers import SerialConsoleSessionManager
+from .serial_console_session_manager import SerialConsoleSessionManager
 from .models import *
 from .dynamic_models import FrontendDeploymentResult, map_deployment_result
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -494,13 +494,14 @@ async def serial_websocket_proxy(
 
     await ws.accept()
 
-    if device.type != 'vm':
-        await ws.close(code=1008, reason="Only VM devices support a serial console")
+    if device.type != 'vm' and device.type != 'container':
+        await ws.close(code=1008, reason="Only VM and Container devices support serial console")
         return
 
-    domain_name = f"whs-{device.name}"
+    device_name = f"whs-{device.name}"
     try:
-        session = await serial_console_session_manager.get_or_create_session(libvirt_connection, domain_name)
+        context = { libvirt_connection: libvirt_connection }
+        session = await serial_console_session_manager.get_or_create_session(device_name, device.type, context)
     except (libvirt.libvirtError, OSError) as e:
         print("ERROR", e)
         await ws.close(code=1011)
@@ -520,7 +521,7 @@ async def serial_websocket_proxy(
 
         if not session.subscribers:
             session.close()
-            serial_console_session_manager.remove_session(domain_name)
+            serial_console_session_manager.remove_session(device_name)
 
     print("Serial console session closed")
 
