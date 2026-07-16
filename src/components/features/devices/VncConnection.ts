@@ -3,20 +3,20 @@ import RFB from "@novnc/novnc/core/rfb.js";
 export default class VncConnection {
   rfb: RFB;
 
-  desktopNameElement: HTMLElement;
-  statusElement: HTMLElement;
+  // desktopNameElement: HTMLElement;
+  // statusElement: HTMLElement;
   rfbElement: HTMLElement;
 
   constructor(deviceId: string) {
-    this.statusElement = document.getElementById("vncStatus") as HTMLElement;
-    this.desktopNameElement = document.getElementById(
-      "vncDesktopName",
-    ) as HTMLElement;
+    // this.statusElement = document.getElementById("vncStatus") as HTMLElement;
+    // this.desktopNameElement = document.getElementById(
+    //   "vncDesktopName",
+    // ) as HTMLElement;
     this.rfbElement = document.getElementById("vncScreen") as HTMLElement;
 
-    if (!this.desktopNameElement || !this.statusElement || !this.rfbElement) {
-      throw new Error("Required VNC HTML elements have not loaded in time");
-    }
+    // if (!this.desktopNameElement || !this.statusElement || !this.rfbElement) {
+    //   throw new Error("Required VNC HTML elements have not loaded in time");
+    // }
 
     // const host = this.readQueryVariable("host", window.location.hostname);
     // const port = this.readQueryVariable("port", window.location.port);
@@ -52,8 +52,8 @@ export default class VncConnection {
     //   });
   }
 
-  setStatus(newStatus: string) {
-    this.statusElement.textContent = `Status: ${newStatus}`;
+  setStatus(_newStatus: string) {
+    // this.statusElement.textContent = `Status: ${newStatus}`;
   }
 
   onConnect(_e: unknown) {
@@ -74,14 +74,18 @@ export default class VncConnection {
   //   this.rfb.sendCredentials({ password });
   // }
 
-  onDesktopName(e: unknown) {
-    // @ts-expect-error - NoVNC does not provide any Event type definitions
-    this.desktopNameElement.textContent = `Desktop: ${e.detail.name}`;
+  onDesktopName(_e: unknown) {
+    // ts-expect-error - NoVNC does not provide any Event type definitions
+    // this.desktopNameElement.textContent = `Desktop: ${e.detail.name}`;
   }
 
   // sendCtrlAltDel() {
   //   this.rfb.sendCtrlAltDel();
   // }
+
+  dispose() {
+    this.rfb.disconnect();
+  }
 
   readQueryVariable(name: string, defaultValue: string) {
     const re = new RegExp(`.*[?&]${name}=([^&#]*)`);

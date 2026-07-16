@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
-import { Braces, ScreenShare, SlashIcon } from "lucide-react";
+import { Braces, ScreenShare, SlashIcon, SquareTerminal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   Breadcrumb,
@@ -12,17 +12,39 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import { getDevice } from "./hooks";
+import SerialConnection from "./SerialConnection";
 import { DeviceType } from "./types";
-import VncConnection from "./VNCViewer";
+import VncConnection from "./VncConnection";
+
+const TABS = [
+  {
+    displayed: "Inspect",
+    value: "inspect",
+    iconElement: Braces,
+  },
+  {
+    displayed: "Desktop",
+    value: "vnc",
+    iconElement: ScreenShare,
+  },
+  {
+    displayed: "Console",
+    value: "serial",
+    iconElement: SquareTerminal,
+  },
+];
 
 export const DeviceDetail = () => {
   const { deviceId } = useParams({ from: "/devices/$deviceId" });
-  const [currentTab, setCurrentTab] = useState("inspect");
-  const vncDesktopNameRef = useRef<HTMLDivElement>(null);
-  const vncScreenRef = useRef<HTMLDivElement>(null);
-  const vncStatusRef = useRef<HTMLDivElement>(null);
-  const connectionRef = useRef<VncConnection>(null);
+
+  const [currentTab, setCurrentTab] = useState(TABS[0].value);
+  const [vncStarted, setVncStarted] = useState(false);
+  const [serialStarted, setSerialStarted] = useState(false);
+
+  const vncConnectionRef = useRef<VncConnection>(null);
+  const serialConnectionRef = useRef<SerialConnection>(null);
 
   const {
     data: deviceData,
@@ -34,13 +56,35 @@ export const DeviceDetail = () => {
     queryFn: () => getDevice(deviceId),
   });
 
-  useEffect(() => {
-    if (connectionRef.current !== null || isPending || isError) {
+  const onClickVncStart = () => {
+    if (vncConnectionRef.current) {
       return;
     }
 
-    connectionRef.current = new VncConnection(deviceId);
-  }, [isPending, isError, deviceId]);
+    vncConnectionRef.current = new VncConnection(deviceId);
+    setVncStarted(true);
+  };
+
+  const onClickSerialStart = () => {
+    if (serialConnectionRef.current) {
+      return;
+    }
+
+    serialConnectionRef.current = new SerialConnection(deviceId);
+    setSerialStarted(true);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (vncConnectionRef.current !== null) {
+        vncConnectionRef.current.dispose();
+      }
+
+      if (serialConnectionRef.current !== null) {
+        serialConnectionRef.current.dispose();
+      }
+    };
+  }, []);
 
   if (isPending) {
     return <div>Fetching Device...</div>;
@@ -57,7 +101,7 @@ export const DeviceDetail = () => {
       deviceData.container_image?.pending);
 
   return (
-    <div className="flex flex-col w-auto h-full">
+    <div className="flex flex-col w-auto">
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -91,21 +135,27 @@ export const DeviceDetail = () => {
 
       <Separator className="my-2 pb-0.5" />
 
-      <Tabs defaultValue="inspect" onValueChange={setCurrentTab} className="">
-        <TabsList className="p-1 bg-blue-100">
-          <TabsTrigger className="text-xl cursor-pointer" value="inspect">
-            <Braces />
-            Inspect
-          </TabsTrigger>
-          <TabsTrigger className="text-xl cursor-pointer" value="vnc">
-            <ScreenShare />
-            VNC
-          </TabsTrigger>
+      <Tabs
+        defaultValue={currentTab}
+        onValueChange={setCurrentTab}
+        className=""
+      >
+        <TabsList className="bg-blue-100">
+          {TABS.map((tab, index) => (
+            <TabsTrigger
+              key={index}
+              className="text-lg cursor-pointer"
+              value={tab.value}
+            >
+              <tab.iconElement />
+              {tab.displayed}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
-        <div className="flex flex-col w-full h-full">
+        <div className="w-full">
           <TabsContent value="inspect">
-            <pre className="w-full p-4 overflow-x-auto text-md font-mono rounded-lg bg-zinc-100 text-zinc-800 border border-zinc-200">
+            <pre className="w-full p-4 overflow-x-auto text-md font-mono rounded bg-zinc-100 text-zinc-800 border border-zinc-200">
               <code className="w-auto">
                 {JSON.stringify(deviceData, null, 2)}
               </code>
@@ -115,26 +165,156 @@ export const DeviceDetail = () => {
               "container_image" for Virtual Machines
             </span>
           </TabsContent>
-          {/* use forcemount and CSS hide magic to preserve the canvas when TabsContent would otherwise be unrendered */}
+
+          {/* use forcemount and CSS magic to prevent important elements from unrendering */}
           <TabsContent
             forceMount
             value="vnc"
             className={
               currentTab === "vnc"
                 ? ""
-                : "absolute opacity-0 pointer-events-none -z-10"
+                : "absolute h-0 overflow-hidden opacity-0 pointer-events-none -z-10"
             }
           >
-            <div ref={vncDesktopNameRef} id="vncDesktopName" className="mt-3">
+            {/* <div id="vncDesktopName" className="mt-3">
               Desktop: N/A
             </div>
-            <div ref={vncStatusRef} id="vncStatus">
-              Status: Not Connected
-            </div>
-            <div ref={vncScreenRef} id="vncScreen" className="mt-1 mx-0"></div>
+            <div id="vncStatus">Status: Not Connected</div> */}
+
+            <VncConnectBanner
+              deviceType={deviceData.type}
+              hasGraphics={deviceData.display}
+              vncStarted={vncStarted}
+              onClickVncStart={onClickVncStart}
+            />
+
+            <div
+              id="vncScreen"
+              className={cn(
+                "w-fit bg-black p-2 border-2 rounded",
+                !vncStarted && "hidden",
+              )}
+            ></div>
+          </TabsContent>
+
+          <TabsContent
+            forceMount
+            value="serial"
+            className={
+              currentTab === "serial"
+                ? ""
+                : "absolute h-0 overflow-hidden opacity-0 pointer-events-none -z-10"
+            }
+          >
+            <SerialConnectBanner
+              deviceType={deviceData.type}
+              serialStarted={serialStarted}
+              onClickSerialStart={onClickSerialStart}
+            />
+
+            <div
+              id="serialScreen"
+              className={cn(
+                "inline-block bg-black p-2 border-2 rounded",
+                !serialStarted && "hidden",
+              )}
+            />
           </TabsContent>
         </div>
       </Tabs>
+    </div>
+  );
+};
+
+interface VncConnectBannerProps {
+  deviceType: string;
+  hasGraphics: boolean;
+  vncStarted: boolean;
+  onClickVncStart: () => void;
+}
+
+const VncConnectBanner = ({
+  deviceType,
+  hasGraphics,
+  vncStarted,
+  onClickVncStart,
+}: VncConnectBannerProps) => {
+  let isError = false;
+  let errorMessage = "";
+
+  if (deviceType !== DeviceType.vm) {
+    isError = true;
+    errorMessage = "Available on VM Devices only";
+  } else if (deviceType === DeviceType.vm && !hasGraphics) {
+    isError = true;
+    errorMessage = '"Graphics" must be enabled';
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex justify-center items-center w-96 h-64 bg-neutral-800 rounded",
+        vncStarted && "hidden",
+      )}
+    >
+      {isError ? (
+        <div className="flex justify-center w-64 px-3 py-1.5 rounded bg-red-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+          {errorMessage}
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={onClickVncStart}
+          disabled={vncStarted}
+          className="w-48 px-3 py-1.5 rounded bg-blue-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        >
+          Connect
+        </button>
+      )}
+    </div>
+  );
+};
+
+interface SerialConnectBannerProps {
+  deviceType: string;
+  serialStarted: boolean;
+  onClickSerialStart: () => void;
+}
+
+const SerialConnectBanner = ({
+  deviceType,
+  serialStarted,
+  onClickSerialStart,
+}: SerialConnectBannerProps) => {
+  let isError = false;
+  let errorMessage = "";
+
+  if (deviceType !== DeviceType.vm) {
+    isError = true;
+    errorMessage = "Available on VM Devices only";
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex justify-center items-center w-96 h-64 bg-neutral-800 rounded",
+        serialStarted && "hidden",
+      )}
+    >
+      {isError ? (
+        <div className="flex justify-center w-64 px-3 py-1.5 rounded bg-red-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+          {errorMessage}
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={onClickSerialStart}
+          disabled={serialStarted}
+          className="w-48 px-3 py-1.5 rounded bg-blue-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        >
+          Connect
+        </button>
+      )}
     </div>
   );
 };
