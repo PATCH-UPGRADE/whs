@@ -127,7 +127,7 @@ def populate_one_device_image(device:Device, model_store:model_store_dependency)
 
 @api_v1.post('/devices')
 async def create_device(device:Device, request:Request, model_store:model_store_dependency):
-    model_store.devices[device.id] = device
+    model_store.store_synchronize(device)
     model_store.save()
     asyncio.ensure_future(regenerate_layout(request))
 
@@ -136,7 +136,7 @@ async def update_device(device_id:str, device:Device, request:Request, model_sto
     if not device_id in model_store.devices:
         raise HTTPException(status_code=404, detail="Device not found")
 
-    model_store.devices[device_id] = device
+    model_store.store_synchronize(device)
     model_store.save()
     asyncio.ensure_future(regenerate_layout(request))
 
@@ -145,7 +145,7 @@ async def delete_device(device_id:str, request:Request, model_store:model_store_
     if not device_id in model_store.devices:
         raise HTTPException(status_code=404, detail="Device not found")
 
-    model_store.devices.pop(device_id)
+    model_store.store_synchronize(model_store.devices[device_id], operation='delete')
     model_store.save()
     asyncio.ensure_future(regenerate_layout(request))
 
@@ -244,7 +244,7 @@ async def upload_image(request:Request, model_store:model_store_dependency, file
             shutil.copyfileobj(file.file, buffer)
     except Exception:
         if image_model.id not in existing_ids:
-            model_store.vm_images.pop(image_model.id, None)
+            model_store.store_synchronize(image_model, operation='delete')
         raise HTTPException(status_code=500, detail="Something went wrong!")
     finally:
         await file.close()
@@ -265,7 +265,7 @@ async def delete_pcap(pcap_id:str, model_store:model_store_dependency):
     if not pcap_id in model_store.pcaps:
         raise HTTPException(status_code=404, detail="PCAP not found")
 
-    model_store.pcaps.pop(pcap_id)
+    model_store.store_synchronize(model_store.pcaps[pcap_id], operation='delete')
     model_store.save()
 
 PCAP_MAGIC_BYTES = [
@@ -391,7 +391,7 @@ async def upload_pcap(request:Request, model_store:model_store_dependency, file:
     finally:
         await file.close()
 
-    model_store.pcaps[pcap_model.id] = pcap_model
+    model_store.store_synchronize(pcap_model)
     model_store.save()
 
     return JSONResponse(content = {
