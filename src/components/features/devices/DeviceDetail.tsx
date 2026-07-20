@@ -289,9 +289,9 @@ const SerialConnectBanner = ({
   let isError = false;
   let errorMessage = "";
 
-  if (deviceType !== DeviceType.vm) {
+  if (deviceType !== DeviceType.vm && deviceType !== DeviceType.container) {
     isError = true;
-    errorMessage = "Available on VM Devices only";
+    errorMessage = "Unavailable for Bare Metal";
   }
 
   return (
