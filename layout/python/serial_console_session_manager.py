@@ -44,7 +44,7 @@ class SerialConsoleSession(ABC):
 class VmSerialConsoleSession(SerialConsoleSession):
 
     def __init__(self, domain_name, context):
-        self.subscribers: set[WebSocket] = set()
+        super().__init__()
         self.loop = asyncio.get_event_loop()
 
         libvirt_connection = context.libvirt_connection
@@ -101,6 +101,7 @@ class VmSerialConsoleSession(SerialConsoleSession):
                 return
 
             if n == -2:
+                await asyncio.sleep(0.02)
                 continue
 
             view = view[n:]
@@ -119,9 +120,9 @@ class VmSerialConsoleSession(SerialConsoleSession):
 class ContainerSerialConsoleSession(SerialConsoleSession):
 
     def __init__(self, container_name, context):
+        super().__init__()
         self.container_name = container_name
 
-        self.subscribers: set = set()
         self.process: asyncio.subprocess.Process = None
         self.task: asyncio.Task = None
 
@@ -135,16 +136,15 @@ class ContainerSerialConsoleSession(SerialConsoleSession):
         self.task = asyncio.create_task(self._read_and_send_to_client_loop())
 
     async def _read_and_send_to_client_loop(self):
-        try:
-            while True:
-                data = await self.process.stdout.read(4096)
+        while True:
+            data = await self.process.stdout.read(4096)
 
-                if not data:
-                    break
+            if not data:
+                break
 
-                await self.broadcast(data)
-        finally:
-            self.close()
+            await self.broadcast(data)
+
+        self.close()
 
     async def send_to_console(self, data: bytes):
         if self.process and self.process.stdin:
@@ -167,8 +167,10 @@ class ContainerSerialConsoleSession(SerialConsoleSession):
             pass
 
 class SerialConsoleSessionManager:
-    sessions: dict[str, SerialConsoleSession] = {}
-    sessions_lock = asyncio.Lock()
+
+    def __init__(self):
+        self.sessions: dict[str, SerialConsoleSession] = {}
+        self.sessions_lock = asyncio.Lock()
 
     async def get_or_create_session(self, device_name, device_type, context):
         async with self.sessions_lock:
@@ -186,5 +188,6 @@ class SerialConsoleSessionManager:
             await session.start()
             return session
 
-    def remove_session(self, device_name):
-        self.sessions.pop(device_name, None)
+    async def remove_session(self, device_name):
+        async with self.sessions_lock:
+            self.sessions.pop(device_name, None)

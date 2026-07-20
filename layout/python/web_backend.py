@@ -516,12 +516,12 @@ async def serial_websocket_proxy(
 
     except WebSocketDisconnect:
         print("Websocket client disconnected")
-    finally:
-        session.subscribers.discard(ws)
 
-        if not session.subscribers:
-            session.close()
-            serial_console_session_manager.remove_session(device_name)
+    session.subscribers.discard(ws)
+
+    if not session.subscribers:
+        session.close()
+        await serial_console_session_manager.remove_session(device_name)
 
     print("Serial console session closed")
 
