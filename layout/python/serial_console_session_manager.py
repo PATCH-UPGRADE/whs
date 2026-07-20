@@ -147,10 +147,13 @@ class ContainerSerialConsoleSession(SerialConsoleSession):
             self.close()
 
     async def send_to_console(self, data: bytes):
-        # TODO: guard against connection resets
         if self.process and self.process.stdin:
-            self.process.stdin.write(data)
-            await self.process.stdin.drain()
+            try:
+                self.process.stdin.write(data)
+                await self.process.stdin.drain()
+            except Exception as e:
+                print("console send error:", e)
+                return
 
     def close(self):
         try:
@@ -184,4 +187,4 @@ class SerialConsoleSessionManager:
             return session
 
     def remove_session(self, device_name):
-        self.container_sessions.pop(device_name, None)
+        self.sessions.pop(device_name, None)
