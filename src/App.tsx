@@ -10,7 +10,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <div className="flex w-full h-full">
         <AppSidebar />
-        <div className="flex flex-col w-full h-full p-16">
+        <div className="ml-64 flex flex-col w-full h-full p-16">
           <RouterProvider router={router} />
         </div>
       </div>

@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import shutil
 import struct
+import threading
 from typing import Annotated, get_args
 from fastapi.responses import JSONResponse, Response
 import uvicorn
@@ -27,6 +28,8 @@ from carthage import (
     deployment)
 from carthage.modeling import CarthageLayout
 from carthage.dependency_injection import instantiation_roots
+
+from .serial_console_session_manager import SerialConsoleSessionManager
 from .models import *
 from .dynamic_models import FrontendDeploymentResult, map_deployment_result
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -83,7 +86,20 @@ async def regenerate_layout(request:Request):
         ainjector = AsyncInjector(injector)
         state.layout = await ainjector.get_instance_async(CarthageLayout)
 
+# Non-Blocking serial console stream buffers aren't automatically filled
+# instead kernal buffer reads occur when the event loop fires, unlike Blocking streams
+libvirt.virEventRegisterDefaultImpl()
 
+def _run_libvirt_event_loop():
+    while True:
+        libvirt.virEventRunDefaultImpl()
+
+_libvirt_event_thread = threading.Thread(
+    target=_run_libvirt_event_loop,
+    name="libvirt-event-loop",
+    daemon=True,
+)
+_libvirt_event_thread.start()
 
 
 api_v1 = APIRouter(prefix="/api/v1")
@@ -461,7 +477,53 @@ async def vnc_websocket_proxy(
         await writer.wait_closed()
     except Exception:
         pass
-    print("Session closed")
+    print("VNC ws session closed")
+
+serial_console_session_manager = SerialConsoleSessionManager()
+
+@api_v1.websocket("/serial_websocket/{device_id}")
+async def serial_websocket_proxy(
+    ws: WebSocket,
+    device_id: str,
+    model_store: model_store_dependency,
+    libvirt_connection: libvirt_connection_dependency,
+):
+    device = model_store.devices.get(device_id)
+    if device is None:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    await ws.accept()
+
+    if device.type != 'vm' and device.type != 'container':
+        await ws.close(code=1008, reason="Only VM and Container devices support serial console")
+        return
+
+    device_name = f"whs-{device.name}"
+    try:
+        context = { libvirt_connection: libvirt_connection }
+        session = await serial_console_session_manager.get_or_create_session(device_name, device.type, context)
+    except (libvirt.libvirtError, OSError) as e:
+        print("ERROR", e)
+        await ws.close(code=1011)
+        return
+
+    session.subscribers.add(ws)
+
+    try:
+        while True:
+            data = await ws.receive_bytes()
+            await session.send_to_console(data)
+
+    except WebSocketDisconnect:
+        print("Websocket client disconnected")
+
+    session.subscribers.discard(ws)
+
+    if not session.subscribers:
+        session.close()
+        await serial_console_session_manager.remove_session(device_name)
+
+    print("Serial console session closed")
 
 @inject(
     layout=InjectionKey(CarthageLayout, _ready=False),
