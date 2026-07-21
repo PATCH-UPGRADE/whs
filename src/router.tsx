@@ -9,6 +9,7 @@ import { ImagesContainer } from "./components/features/images/Images";
 import { ImportExportContainer } from "./components/features/import-export/ImportExport";
 import { PcapsContainer } from "./components/features/pcaps/Pcaps";
 import { TopologiesContainer } from "./components/features/topologies/Topologies";
+import { Topology } from "./components/features/topologies/Topology";
 
 const rootRoute = createRootRoute();
 
@@ -47,6 +48,11 @@ const routes = [
     getParentRoute: () => rootRoute,
     path: "/import-export",
     component: () => <ImportExportContainer />,
+  }),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/topology",
+    component: () => <Topology />,
   }),
 ];
 

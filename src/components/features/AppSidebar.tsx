@@ -7,6 +7,7 @@ const urls = [
   { name: "PCAPs", path: "/pcaps" },
   { name: "Deploy", path: "/topologies" }, // TODO: Make this proper once WHS backend supports multiple deploys
   { name: "Import / Export", path: "/import-export" },
+  { name: "Topology", path: "/topology" },
 ];
 
 export const AppSidebar: React.FC = () => {

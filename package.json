@@ -22,6 +22,7 @@
     "@types/novnc__novnc": "^1.6.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cytoscape": "^3.34.0",
     "lucide-react": "^1.7.0",
     "radix-ui": "^1.4.3",
     "react": "^19.2.4",
