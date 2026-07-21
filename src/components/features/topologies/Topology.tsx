@@ -1,5 +1,6 @@
-import cytoscape from "cytoscape";
-import { Ref, useEffect, useRef } from "react";
+import cytoscape, { type Core, type LayoutOptions } from "cytoscape";
+import { useEffect, useRef } from "react";
+import TopologyCanvasEngine from "./TopologyCanvasEngine";
 
 const initialElements = [
   { data: { id: "a", label: "A" } },
@@ -9,9 +10,12 @@ const initialElements = [
   { data: { id: "bc", source: "b", target: "c", label: "connects" } },
 ];
 
-const getCytoscape = (containerRef: Ref<HTMLDivElement>) => {
+const getCytoscape = (
+  container: HTMLDivElement,
+  layoutName: LayoutOptions["name"],
+): Core => {
   return cytoscape({
-    container: containerRef.current,
+    container,
     elements: initialElements,
     style: [
       {
@@ -40,6 +44,7 @@ const getCytoscape = (containerRef: Ref<HTMLDivElement>) => {
           label: "data(label)",
           "font-size": 10,
           color: "#475569",
+          events: "no", // ignores mouse events
         },
       },
       {
@@ -50,47 +55,66 @@ const getCytoscape = (containerRef: Ref<HTMLDivElement>) => {
         },
       },
     ],
-    layout: { name: layoutName, animate: true },
+    layout: {
+      name: layoutName,
+      // animate: true
+    },
   });
-}
- 
-export const Topology = () => {
-  const containerRef = useRef(null);
-  const cytoRef = useRef(null);
- 
-    useEffect(() => {
-  
-      // Example event hook — a real controller would subscribe here
-      const handleNodeTap = (evt) => {
-        const node = evt.target;
-        console.log("Node tapped:", node.id(), node.data("label"));
-      };
-      cytoRef.current.on("tap", "node", handleNodeTap);
-  
-      return () => {
-        // Unbind explicitly (destroy() would also do this, but being
-        // explicit avoids relying on ordering if this effect grows).
-        cytoRef.current?.off("tap", "node", handleNodeTap);
-        cytoRef.current?.destroy();
-        cytoRef.current = null;
-      };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // init once; updates handled imperatively below
+};
 
- 
+export const Topology = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const cyRef = useRef<TopologyCanvasEngine>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) {
+      return;
+    }
+
+    const cy = getCytoscape(containerRef.current, "grid");
+    const engine = new TopologyCanvasEngine(cy);
+    cyRef.current = engine;
+
+    return () => {
+      cyRef.current?.dispose();
+      cyRef.current = null;
+    };
+  }, []);
+
+  const runLayout = (name: LayoutOptions["name"]) => {
+    cyRef.current?.cy.layout({ name }).run();
+  };
+
   return (
     <div style={{ padding: 24, fontFamily: "sans-serif" }}>
-      <h2>Cytoscape Graph</h2>
       <div style={{ marginBottom: 12 }}>
-        <button onClick={() => containerRef.current.fit()}>Fit</button>{" "}
-        <button onClick={() => containerRef.current.runLayout("grid")}>
+        <button
+          type="button"
+          className="border-2 p-2 hover:bg-neutral-200"
+          onClick={() => cyRef.current?.cy.fit()}
+        >
+          Fit
+        </button>{" "}
+        <button
+          type="button"
+          className="border-2 p-2 hover:bg-neutral-200"
+          onClick={() => runLayout("grid")}
+        >
           Grid Layout
         </button>{" "}
-        <button onClick={() => containerRef.current.runLayout("cose")}>
+        <button
+          type="button"
+          className="border-2 p-2 hover:bg-neutral-200"
+          onClick={() => runLayout("cose")}
+        >
           Cose Layout
         </button>
       </div>
-      <GraphView ref={containerRef} elements={initialElements} />
+
+      <div
+        ref={containerRef}
+        style={{ width: "100%", height: 480, border: "1px solid #e2e8f0" }}
+      />
     </div>
   );
-}
+};
