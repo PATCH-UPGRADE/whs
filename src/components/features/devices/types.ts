@@ -47,6 +47,17 @@ export const deviceInputSchema = z.object({
   ipv4_manual: z.string().optional(),
   gateway: z.string().optional(),
   dns_servers: z.array(z.string()),
+}).superRefine((device, ctx) => {
+  if (
+    device.type === DeviceType.container &&
+    !device.container_image_id?.trim()
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["container_image_id"],
+      message: "A container image is required.",
+    });
+  }
 });
 
 export const deviceOutputSchema = z.object({
