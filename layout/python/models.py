@@ -6,6 +6,7 @@ from pathlib import Path
 import yaml
 from uuid import uuid4
 from entanglement.pydantic import SynchronizableBaseModel, PydanticSyncStoreRegistry, class_store_property
+from entanglement.javascript_schema import javascript_registry
 from entanglement.memory import StoreInSyncStoreMixin, SyncStore, SyncOwner
 from entanglement.interface import register_synchronizables
 ''' Models representing objects that have been statically added to a
@@ -231,6 +232,8 @@ class ModelStore(PydanticSyncStoreRegistry):
 
 
 register_synchronizables(ModelStore, SyncOwner)
+javascript_registry(ModelStore, 'whs_models')
+
     
 __all__ = [
     'IdentifiedModel',

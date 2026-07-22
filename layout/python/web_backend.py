@@ -32,6 +32,7 @@ from carthage.dependency_injection import instantiation_roots
 from .serial_console_session_manager import SerialConsoleSessionManager
 from .models import *
 from .dynamic_models import FrontendDeploymentResult, map_deployment_result
+from . import entanglement
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .models import DeviceWithImage
@@ -525,6 +526,8 @@ async def serial_websocket_proxy(
 
     print("Serial console session closed")
 
+api_v1.add_api_websocket_route('/entanglement', entanglement.entanglement_websocket)
+
 @inject(
     layout=InjectionKey(CarthageLayout, _ready=False),
     plugin=InjectionKey(CarthagePlugin, name='whs'),
@@ -546,7 +549,8 @@ async def build_web_app(layout, plugin, injector):
     app.state.base_injector = injector
     app.state.model_store = injector.get_instance(ModelStore)
     app.include_router(api_v1)
-
+    context = contextvars.Context()
+    context.run(entanglement.setup_entanglement, app, app.state.model_store)
     if (plugin.resource_dir/'../dist').exists():
         app.mount('/', SinglePageApplicationStaticFiles(directory=plugin.resource_dir/'../dist', html=True), name='frontend')
         return app
@@ -559,3 +563,4 @@ async def start_web_server(app):
                             )
     server = uvicorn.Server(config)
     asyncio.get_event_loop().create_task(server.serve(), context=contextvars.Context())
+    
