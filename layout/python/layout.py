@@ -136,11 +136,18 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
             device_dns_servers = device.dns_servers
             device_image = model_store.get_device_container_image(device)
 
+            if device_image is None:
+                @inject()
+                def container_image():
+                    raise AttributeError(f"Device '{device_name}' has no container image set.")
+            else:
+                container_image = device_image.name
+
             @dynamic_name(device.name)
             class whs_container(MachineModel):
                 device_model = device
                 add_provider(machine_implementation_key, dependency_quote(PodmanContainer))
-                add_provider(oci_container_image, device_image.name)
+                add_provider(oci_container_image, container_image)
                 name = device_name
 
             return whs_container
