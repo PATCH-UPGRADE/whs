@@ -1,0 +1,7 @@
+function register_schema(registry) {
+        registry._schemaItem( "IHave", ["serial", "_sync_owner"], ["serial", "_sync_owner"])
+        registry._schemaItem( "YouHave", ["serial", "_sync_owner"], ["serial", "_sync_owner"])
+        registry._schemaItem( "MyOwners", "Unique", ["owners", "_sync_owner"])
+        registry._schemaItem( "SyncOwner", ["id"], ["id", "type", "epoch", "sync_serial", "_sync_owner"])
+}
+module.exports = register_schema;

@@ -1,0 +1,11 @@
+function register_schema(registry) {
+        registry._schemaItem( "SyncOwner", ["_sync_owner"], ["_sync_owner"])
+        registry._schemaItem( "StoredBaseModel", [], ["sync_primary_keys", "_sync_owner", "sync_store_with", "sync_owner_id", "sync_owner_object"])
+        registry._schemaItem( "IdentifiedModel", ["id"], ["sync_primary_keys", "id", "_sync_owner", "sync_store_with", "sync_owner_id", "sync_owner_object"])
+        registry._schemaItem( "VmImage", ["id"], ["id", "name", "description", "version", "type", "pending", "sync_primary_keys", "_sync_owner", "sync_store_with", "sync_owner_id", "sync_owner_object"])
+        registry._schemaItem( "ContainerImage", ["id"], ["id", "name", "description", "version", "sync_primary_keys", "_sync_owner", "sync_store_with", "sync_owner_id", "sync_owner_object"])
+        registry._schemaItem( "Device", ["id"], ["id", "name", "description", "type", "cloud_init", "architecture", "cpus", "memory", "disk", "disk_controller", "display", "vm_image_id", "container_image_id", "dhcp", "mac_address", "ipv4_manual", "gateway", "dns_servers", "sync_primary_keys", "_sync_owner", "sync_store_with", "sync_owner_id", "sync_owner_object"])
+        registry._schemaItem( "DeviceWithImage", ["id"], ["vm_image", "container_image", "id", "name", "description", "type", "cloud_init", "architecture", "cpus", "memory", "disk", "disk_controller", "display", "vm_image_id", "container_image_id", "dhcp", "mac_address", "ipv4_manual", "gateway", "dns_servers", "sync_primary_keys", "_sync_owner", "sync_store_with", "sync_owner_id", "sync_owner_object"])
+        registry._schemaItem( "Pcap", ["id"], ["id", "name", "description", "sync_primary_keys", "_sync_owner", "sync_store_with", "sync_owner_id", "sync_owner_object"])
+}
+module.exports = register_schema;

@@ -7,11 +7,13 @@
     "moduleResolution": "bundler",
     "esModuleInterop": true,
     "jsx": "preserve",
+    "allowJs": true,
+    "checkJs": false,
     "types": ["vite/client"],
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx"],
+  "include": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.cjs", "**/*.mjs"],
   "exclude": ["node_modules"]
 }

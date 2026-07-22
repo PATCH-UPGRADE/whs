@@ -1,12 +1,35 @@
-const getCarthageApiUrl = (): string => {
-  if (import.meta.env.DEV) {
-    const CARTHAGE_API_URL = import.meta.env.VITE_CARTHAGE_API_URL;
+/**
+ * Get the Carthage API URL, working in both browser and Node.js environments.
+ *
+ * VITE_CARTHAGE_API_URL should be a full URL like http://127.0.0.1:8080/
+ */
+export const getCarthageApiUrl = (): string => {
+  // Check if running in Node.js environment
+  const isNode =
+    typeof process !== "undefined" &&
+    process.versions != null &&
+    process.versions.node != null;
 
-    if (!CARTHAGE_API_URL) {
+  if (isNode) {
+    const rawUrl = process.env.VITE_CARTHAGE_API_URL;
+
+    if (!rawUrl) {
+      throw new Error(
+        "'VITE_CARTHAGE_API_URL' not found in environment variables!",
+      );
+    }
+
+    return rawUrl.replace(/\/$/, "") + "/api/v1";
+  }
+
+  if (import.meta.env.DEV) {
+    const rawUrl = import.meta.env.VITE_CARTHAGE_API_URL || "";
+
+    if (!rawUrl) {
       throw new Error("'VITE_CARTHAGE_API_URL' not found in .env!");
     }
 
-    return `http://${CARTHAGE_API_URL}`;
+    return rawUrl.replace(/\/$/, "") + "/api/v1";
   }
 
   const { protocol, hostname, port } = window.location;
