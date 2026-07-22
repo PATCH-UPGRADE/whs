@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import type { SyncManager as SyncManagerType, SyncRegistry as SyncRegistryType } from "@hadron/entanglement";
 import { AppSidebar } from "./components/features/AppSidebar";
 import router from "./router";
 import { createEntanglementProps } from "./entanglement";
@@ -10,13 +9,10 @@ import { EntanglementProvider } from "entanglement-react";
 const queryClient = new QueryClient();
 
 function App() {
-  const [entanglement, setEntanglement] = useState<{
-    manager: SyncManagerType;
-    registry: SyncRegistryType;
-  } | null>(null);
+  const [entanglement, setEntanglement] = useState<{ manager: any; registry: any } | null>(null);
 
   useEffect(() => {
-    createEntanglementProps().then(setEntanglement);
+    createEntanglementProps().then((props) => setEntanglement(props));
   }, []);
 
   if (!entanglement) {
