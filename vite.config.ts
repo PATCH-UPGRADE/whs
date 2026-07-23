@@ -33,6 +33,12 @@ export default defineConfig({
       "@novnc/novnc/core/rfb.js": "/node_modules/@novnc/novnc/core/rfb.js",
     },
     // Force single instances when consuming linked local packages.
-    dedupe: ["@hadron/entanglement", "react", "react-dom"],
+    dedupe: [
+      "@hadron/entanglement",
+      "@hadron/entanglement/persistence",
+      "@hadron/entanglement/filter",
+      "react",
+      "react-dom",
+    ],
   },
 });

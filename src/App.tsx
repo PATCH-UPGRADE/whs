@@ -10,13 +10,37 @@ const queryClient = new QueryClient();
 
 function App() {
   const [entanglement, setEntanglement] = useState<{ manager: any; registry: any } | null>(null);
+  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    createEntanglementProps().then((props) => setEntanglement(props));
+    createEntanglementProps()
+      .then((props) => setEntanglement(props))
+      .catch((err) => setError(err instanceof Error ? err : new Error(String(err))));
   }, []);
 
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-destructive/10">
+        <div className="p-6 bg-destructive text-background rounded-lg max-w-lg">
+          <h2 className="text-xl font-bold mb-2">Failed to initialize</h2>
+          <p className="text-sm mb-4">{error.message}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-background text-destructive rounded hover:opacity-90"
+          >
+            Reload
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!entanglement) {
-    return null;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+      </div>
+    );
   }
 
   return (

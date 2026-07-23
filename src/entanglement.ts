@@ -2,6 +2,7 @@ import { SyncManager, SyncRegistry } from "@hadron/entanglement";
 import { SyncOwner, PersistentSynchronizable } from "@hadron/entanglement/persistence";
 import registerWhsModels from "@/entanglement_schemas/whs_models";
 import { getCarthageApiUrl } from "@/fetcher";
+import { Device, VmImage, ContainerImage } from "@/models";
 
 /**
  * Create props for entanglement-react's EntanglementProvider.
@@ -23,8 +24,11 @@ export async function createEntanglementProps(): Promise<{
 
   // Register WHS models schema
   registerWhsModels(registry);
-  // It turns out we do not use SQL persistence layer, but we do want SyncOwner.
+  // Register the model classes so they can be constructed from WebSocket messages
   registry.register(SyncOwner);
+  registry.register(Device);
+  registry.register(VmImage);
+  registry.register(ContainerImage);
 
   // Create WebSocket URL by modifying the HTTP URL's protocol
   const wsUrl = new URL(apiUrl);

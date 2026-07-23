@@ -6,6 +6,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { useEntangledList } from "entanglement-react";
 import { PlusIcon, SlashIcon } from "lucide-react";
 import { useState } from "react";
 import { type UseFormReturn, useForm, useWatch } from "react-hook-form";
@@ -47,13 +48,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Device } from "@/models";
 import { getImages } from "../images/hooks";
 import { columns } from "./columns";
-import { getDevices, useCreateDevice } from "./hooks";
+import { useCreateDevice } from "./hooks";
 import {
   DEVICE_ARCHITECTURE_TYPE_TO_DISPLAY_TEXT,
   DEVICE_TYPE_TO_DISPLAY_TEXT,
-  type Device,
   DeviceArchitectureType,
   type DeviceFormValues,
   DeviceType,
@@ -628,15 +629,7 @@ export const DeviceCreateUpdateModal = ({
 };
 
 export const DevicesContainer = () => {
-  const {
-    data: devices,
-    isPending,
-    isError,
-    error,
-  } = useQuery({
-    queryKey: ["devices"],
-    queryFn: getDevices,
-  });
+  const devices = useEntangledList(Device);
 
   const createDevice = useCreateDevice();
   const [open, setOpen] = useState(false);
@@ -681,15 +674,6 @@ export const DevicesContainer = () => {
     });
   };
 
-  if (isPending) {
-    return <DevicesLoading />;
-  }
-
-  if (isError) {
-    console.error(error);
-    return <DevicesError />;
-  }
-
   return (
     <div className="flex flex-col">
       <Breadcrumb>
@@ -722,23 +706,15 @@ export const DevicesContainer = () => {
   );
 };
 
-const DevicesLoading = () => {
-  return <div>Devices loading...</div>;
-};
-
-const DevicesError = () => {
-  return <div>An error occured while loading Devices!</div>;
-};
-
 interface DevicesListI {
-  devices: Device[];
+  devices: readonly Device[];
 }
 
 const DevicesList = ({ devices }: DevicesListI) => {
   const navigate = useNavigate();
 
   const table = useReactTable({
-    data: devices,
+    data: [...devices],
     columns: columns,
     getCoreRowModel: getCoreRowModel(),
   });
