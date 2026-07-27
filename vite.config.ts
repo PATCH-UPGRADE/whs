@@ -6,6 +6,14 @@ import { defineConfig } from "vitest/config";
 
 // https://vite.dev/config/
 export default defineConfig({
+  build: {
+    minify: "esbuild",
+  },
+  // Entanglement uses constructor names to match concrete classes to schema
+  // entries (for example, SyncOwner). Preserve them in production bundles.
+  esbuild: {
+    keepNames: true,
+  },
   test: {
     setupFiles: ["./src/tests/setup-websocket.ts"],
   },
