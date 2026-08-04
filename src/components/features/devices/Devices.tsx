@@ -90,6 +90,8 @@ export const DeviceCreateUpdateModal = ({
     handleCreate(values);
   };
 
+  console.log("form:", form.getValues());
+
   const isFormPending = form.formState.isSubmitting;
   const verbLabel = isUpdate ? "Update" : "Create";
   const description = isUpdate
@@ -121,6 +123,26 @@ export const DeviceCreateUpdateModal = ({
             className="px-6"
           >
             <div className="no-scrollbar -mx-6 px-6 py-4 max-h-[60vh] overflow-y-auto grid gap-6">
+              <FormField
+                control={form.control}
+                name="enabled_for_deployment"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Enabled</FormLabel>
+                    <FormDescription>
+                      Specify whether the device should be deployed.
+                    </FormDescription>
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="name"
@@ -644,6 +666,7 @@ export const DevicesContainer = () => {
   const form = useForm<DeviceFormValues>({
     resolver: zodResolver(deviceInputSchema),
     defaultValues: {
+      enabled_for_deployment: true,
       name: "",
       description: "",
       type: DeviceType.vm,
@@ -663,6 +686,7 @@ export const DevicesContainer = () => {
       dns_servers: [],
     },
   });
+  console.log(form.getValues().enabled_for_deployment);
 
   const handleCreate = (item: DeviceFormValues) => {
     // handle edge case where user sets container to native then flips back to a VM
@@ -689,6 +713,8 @@ export const DevicesContainer = () => {
     console.error(error);
     return <DevicesError />;
   }
+
+  console.log("Devices:", devices);
 
   return (
     <div className="flex flex-col">

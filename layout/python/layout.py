@@ -197,6 +197,10 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
             return whs_vm
 
         for id, device in model_store.devices.items():
+            if not device.enabled_for_deployment:
+                print(f'Skipped building device: [{device.name}], "enabled_for_deployment" is false.')
+                continue
+
             if device.type == 'vm':
                 new_vm = build_vm(device)
             elif device.type == 'container':
