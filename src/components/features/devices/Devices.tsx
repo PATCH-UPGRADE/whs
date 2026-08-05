@@ -714,7 +714,7 @@ const DevicesList = ({ devices }: DevicesListI) => {
   const navigate = useNavigate();
 
   const table = useReactTable({
-    data: [...devices],
+    data: devices as Device[], // useReactTable doesn't support readonly typeq
     columns: columns,
     getCoreRowModel: getCoreRowModel(),
   });

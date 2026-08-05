@@ -19,7 +19,7 @@ export const getCarthageApiUrl = (): string => {
       );
     }
 
-    return rawUrl.replace(/\/$/, "") + "/api/v1";
+    return `${rawUrl.replace(/\/$/, "")}/api/v1`;
   }
 
   if (import.meta.env.DEV) {
@@ -29,7 +29,7 @@ export const getCarthageApiUrl = (): string => {
       throw new Error("'VITE_CARTHAGE_API_URL' not found in .env!");
     }
 
-    return rawUrl.replace(/\/$/, "") + "/api/v1";
+    return `${rawUrl.replace(/\/$/, "")}/api/v1`;
   }
 
   const { protocol, hostname, port } = window.location;

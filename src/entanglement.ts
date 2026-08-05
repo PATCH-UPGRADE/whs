@@ -1,8 +1,11 @@
 import { SyncManager, SyncRegistry } from "@hadron/entanglement";
-import { SyncOwner, PersistentSynchronizable } from "@hadron/entanglement/persistence";
+import {
+  PersistentSynchronizable,
+  SyncOwner,
+} from "@hadron/entanglement/persistence";
 import registerWhsModels from "@/entanglement_schemas/whs_models";
 import { getCarthageApiUrl } from "@/fetcher";
-import { Device, VmImage, ContainerImage } from "@/models";
+import { ContainerImage, Device, VmImage } from "@/models";
 
 /**
  * Create props for entanglement-react's EntanglementProvider.
@@ -19,8 +22,7 @@ export async function createEntanglementProps(): Promise<{
   const apiUrl = getCarthageApiUrl();
 
   // Create the registry and register schemas
-  const registry = new SyncRegistry({base: PersistentSynchronizable});
-
+  const registry = new SyncRegistry({ base: PersistentSynchronizable });
 
   // Register WHS models schema
   registerWhsModels(registry);
@@ -33,7 +35,7 @@ export async function createEntanglementProps(): Promise<{
   // Create WebSocket URL by modifying the HTTP URL's protocol
   const wsUrl = new URL(apiUrl);
   wsUrl.protocol = wsUrl.protocol === "https:" ? "wss:" : "ws:";
-  wsUrl.pathname = wsUrl.pathname.replace(/\/$/, "") + "/entanglement";
+  wsUrl.pathname = `${wsUrl.pathname.replace(/\/$/, "")}/entanglement`;
 
   // Create SyncManager
   const manager = new SyncManager({

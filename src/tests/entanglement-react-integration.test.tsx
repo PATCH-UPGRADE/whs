@@ -1,22 +1,21 @@
 // @vitest-environment jsdom
 
-
 import { SyncOwner } from "@hadron/entanglement/persistence";
 import { renderHook, waitFor } from "@testing-library/react";
-import { createEntanglementProps } from "../entanglement";
 import { EntanglementProvider, useEntangledList } from "entanglement-react";
 import type { ReactNode } from "react";
 import { beforeAll, describe, expect, it } from "vitest";
-import {getCarthageApiUrl} from "@/fetcher";
+import { getCarthageApiUrl } from "@/fetcher";
+import { createEntanglementProps } from "../entanglement";
 
 const CARTHAGE_API_URL = getCarthageApiUrl();
 
-const skipTests =
-  !CARTHAGE_API_URL || !new URL(CARTHAGE_API_URL).hostname;
+const skipTests = !CARTHAGE_API_URL || !new URL(CARTHAGE_API_URL).hostname;
 
 describe("Entanglement React Integration", () => {
-  let entanglementProps: Awaited<ReturnType<typeof createEntanglementProps>> | null =
-    null;
+  let entanglementProps: Awaited<
+    ReturnType<typeof createEntanglementProps>
+  > | null = null;
 
   beforeAll(async () => {
     if (skipTests) {
@@ -51,11 +50,14 @@ describe("Entanglement React Integration", () => {
   it("should have SyncOwner in syncStorageMap within 5 seconds", async () => {
     if (skipTests || !entanglementProps) return;
 
-    await waitFor(() => {
-      const map = SyncOwner.syncStorageMap;
-      expect(map.size).toBeGreaterThan(0);
-    }, {
-      timeout: 5000,
-    });
+    await waitFor(
+      () => {
+        const map = SyncOwner.syncStorageMap;
+        expect(map.size).toBeGreaterThan(0);
+      },
+      {
+        timeout: 5000,
+      },
+    );
   }, 30000); // Timeout: 30 seconds
 });
