@@ -4,17 +4,70 @@ import carthage.libvirt
 from carthage.modeling import *
 from carthage.podman import *
 from carthage.oci import *
-from carthage.network import V4Config
+from carthage.network import V4Config, persistent_random_mac, NetworkConfig
 from carthage.systemd import SystemdNetworkModelMixin
+from carthage.modeling import NetworkConfigModel, injector_access
+from carthage.dependency_injection import inject, InjectionKey
 from carthage_base import *
 from .images import WhsRouter
 from .web_backend import web_server_key
-from .models import ModelStore
+from .models import ModelStore, VmImage
 from pathlib import Path
+from typing import Optional
 
 
 root_path = Path(__file__).parent.parent
 assignments_path = root_path/"assignments.yml"
+
+class AlreadyRunningMachine(Machine):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.running = True
+    
+
+@inject(device_model=InjectionKey('device_model'))
+def build_v4_config(device_model) -> Optional[V4Config]:
+    '''Build V4Config from device model, only setting non-falsy values.
+    
+    This function only sets v4_config attributes if the device model properties
+    are non-falsy. Gateway and DNS servers are typically not set on devices
+    (we don't want to override the V4Config in this case).
+    
+    dhcp is deprecated in the device model and is ignored here.
+    '''
+    if not device_model:
+        return None
+    
+    kwargs = {}
+    
+    # Only set address if non-falsy
+    if device_model.ipv4_manual:
+        kwargs['address'] = str(device_model.ipv4_manual)
+    
+    # Only set gateway if non-falsy (typically not set on devices)
+    if device_model.gateway:
+        kwargs['gateway'] = str(device_model.gateway)
+    
+    # Only set dns_servers if non-empty
+    if device_model.dns_servers:
+        kwargs['dns_servers'] = tuple(str(s) for s in device_model.dns_servers)
+    
+    # Only create V4Config if we have static configuration
+    if kwargs.get('address') or kwargs.get('gateway') or kwargs.get('dns_servers'):
+        return V4Config(**kwargs)
+    return None
+
+
+@inject(device_model=InjectionKey('device_model'))
+def build_mac(device_model) -> str:
+    '''Build MAC address from device model.'''
+    if device_model.mac_address:
+        return device_model.mac_address
+    return persistent_random_mac
+
+
+class DeviceNetworkConfig(NetworkConfigModel):
+    add('eth0', mac=build_mac, v4_config=build_v4_config, net=injector_access('bridge_net'))
 
 
 @inject(model_store=ModelStore, ainjector=AsyncInjector)
@@ -32,6 +85,7 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
         add_provider(podman_container_host, LocalPodmanContainerHost)
         add_provider(persistent_seed_path, assignments_path)
         add_provider(MachineDependency(f'router.{domain}'))
+        add_provider(InjectionKey(NetworkConfig), DeviceNetworkConfig, allow_multiple=True)
 
         @provides('bridge_net')
         class net(NetworkModel):
@@ -73,6 +127,41 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
                     )
                 )
 
+        def build_container(device):
+            device_name = device.name
+            device_dhcp = device.dhcp
+            device_mac = device.mac_address if device.mac_address else persistent_random_mac
+            device_ipv4 = device.ipv4_manual
+            device_gateway = device.gateway
+            device_dns_servers = device.dns_servers
+            device_image = model_store.get_device_container_image(device)
+
+            if device_image is None:
+                @inject()
+                def container_image():
+                    raise AttributeError(f"Device '{device_name}' has no container image set.")
+            else:
+                container_image = device_image.name
+
+            @dynamic_name(device.name)
+            class whs_container(MachineModel):
+                device_model = device
+                add_provider(machine_implementation_key, dependency_quote(PodmanContainer))
+                add_provider(oci_container_image, container_image)
+                name = device_name
+
+            return whs_container
+
+        def build_bare_metal(device):
+            @dynamic_name(device.name)
+            class whs_bare_metal(MachineModel):
+                device_model = device
+                name = device.name
+                add_provider(machine_implementation_key, dependency_quote(BareMetalMachine))
+                machine_mixins = (AlreadyRunningMachine,)
+
+            return whs_bare_metal
+
         def build_vm(device):
 
             device_dhcp = device.dhcp
@@ -80,8 +169,16 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
             device_ipv4 = device.ipv4_manual
             device_gateway = device.gateway
             device_dns_servers = device.dns_servers
-            device_image = model_store.get_device_image(device)
-            vm_image = dependency_quote(Path(config.vm_image_dir)/"images" / device_image.name)
+            device_image = model_store.get_device_vm_image(device)
+            image_dir = Path(config.vm_image_dir) / "images"
+            if isinstance(device_image, VmImage) and not device_image.check_pending(image_dir, model_store):
+                vm_image = dependency_quote(image_dir / device_image.name)
+            else:
+                missing_name = device_image.name if device_image else f'{device.name} image'
+
+                @inject()
+                def vm_image():
+                    raise FileNotFoundError(f'VM image not present: {missing_name}')
 
             @dynamic_name(device.name) # TODO: Should we do something to prevent duplicate machine names?
             class whs_vm(MachineModel):
@@ -97,27 +194,14 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
                 add_provider(machine_implementation_key, dependency_quote(carthage.libvirt.Vm))
                 add_provider(carthage.libvirt.vm_image_key, vm_image)
 
-                class net_config(NetworkConfigModel):
-                    if not device_dhcp:
-                        add(
-                            'eth0',
-                            mac=device_mac,
-                            net=injector_access('bridge_net'),
-                            v4_config=V4Config(dhcp=False,
-                                               address=device_ipv4,
-                                               gateway=device_gateway,
-                                               dns_servers=device_dns_servers)
-                        )
-                    else:
-                        add(
-                            'eth0',
-                            mac=device_mac,
-                            net=injector_access('bridge_net'),
-                            v4_config=V4Config(dhcp=device_dhcp),
-                        )
             return whs_vm
 
         for id, device in model_store.devices.items():
-            new_vm = build_vm(device)
+            if device.type == 'vm':
+                new_vm = build_vm(device)
+            elif device.type == 'container':
+                new_container = build_container(device)
+            elif device.type == 'bareMetal':
+                new_bare_metal = build_bare_metal(device)
 
     return await ainjector(layout)

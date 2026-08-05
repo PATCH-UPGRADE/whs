@@ -6,7 +6,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { PlusIcon, SlashIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { type UseFormReturn, useForm } from "react-hook-form";
 import {
   Breadcrumb,
@@ -35,7 +35,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { columns } from "./columns";
+import { getImageColumns } from "./columns";
 import { getImages, useUploadImage } from "./hooks";
 import {
   type Image,
@@ -43,15 +43,17 @@ import {
   imageUploadInputSchema,
 } from "./types";
 
-export const VmImageUploadModal = ({
+export const ImageUploadModal = ({
   form,
   handleCreate,
   open,
+  pendingImage,
   setOpen,
 }: {
   form: UseFormReturn<ImageUploadFormValues>;
   handleCreate: (values: ImageUploadFormValues) => void;
   open: boolean;
+  pendingImage?: Image | null;
   setOpen: (open: boolean) => void;
   isUpdate?: boolean;
 }) => {
@@ -60,13 +62,25 @@ export const VmImageUploadModal = ({
   };
 
   const isPending = form.formState.isSubmitting;
+  const selectedFile = form.watch("file");
+  const isPendingUpload = Boolean(pendingImage);
+  const pendingImageName = pendingImage?.name ?? "";
+  const uploadLabel = isPendingUpload ? "Upload Pending Image" : "Upload Image";
+  const filenameMismatch =
+    pendingImage && selectedFile
+      ? selectedFile.name !== pendingImage.name
+      : false;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="p-0 rounded-2xl w-6xl lg:max-w-2xl overflow-hidden">
         <DialogHeader className="px-6 py-4 border-b gap-1">
-          <DialogTitle className="text-xl">Upload Image</DialogTitle>
-          <DialogDescription>Upload an virtual machine image</DialogDescription>
+          <DialogTitle className="text-xl">{uploadLabel}</DialogTitle>
+          <DialogDescription>
+            {isPendingUpload
+              ? `Upload the image file for ${pendingImageName}. The filename must match the pending image name.`
+              : "Upload an virtual machine image"}
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form
@@ -82,7 +96,9 @@ export const VmImageUploadModal = ({
                   <FormItem>
                     <FormLabel>Upload File *</FormLabel>
                     <FormDescription>
-                      Provide any additional details here
+                      {isPendingUpload
+                        ? `Choose the file named ${pendingImageName}`
+                        : "Provide any additional details here"}
                     </FormDescription>
                     <FormControl>
                       <Input
@@ -93,6 +109,11 @@ export const VmImageUploadModal = ({
                         }}
                       />
                     </FormControl>
+                    {filenameMismatch ? (
+                      <p className="text-sm text-destructive">
+                        Selected file must be named {pendingImageName}.
+                      </p>
+                    ) : null}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -142,8 +163,12 @@ export const VmImageUploadModal = ({
           <DialogClose asChild>
             <Button variant="outline">Cancel</Button>
           </DialogClose>
-          <Button type="submit" form="image-form" disabled={isPending}>
-            Upload Image
+          <Button
+            type="submit"
+            form="image-form"
+            disabled={isPending || filenameMismatch}
+          >
+            {uploadLabel}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -164,6 +189,7 @@ export const ImagesContainer = () => {
 
   const uploadImage = useUploadImage();
   const [open, setOpen] = useState(false);
+  const [pendingImage, setPendingImage] = useState<Image | null>(null);
 
   const form = useForm<ImageUploadFormValues>({
     resolver: zodResolver(imageUploadInputSchema),
@@ -173,6 +199,26 @@ export const ImagesContainer = () => {
       version: "",
     },
   });
+
+  useEffect(() => {
+    if (!open) {
+      setPendingImage(null);
+      form.reset({
+        file: undefined,
+        description: "",
+        version: "",
+      });
+      return;
+    }
+
+    if (pendingImage) {
+      form.reset({
+        file: undefined,
+        description: pendingImage.description,
+        version: pendingImage.version,
+      });
+    }
+  }, [form, open, pendingImage]);
 
   const handleCreate = (item: ImageUploadFormValues) => {
     // repack data as FormData so the browser auto sets the header to
@@ -184,13 +230,22 @@ export const ImagesContainer = () => {
 
     uploadImage.mutate(formData, {
       onSuccess: () => {
-        form.reset();
         setOpen(false);
       },
       onError: () => {
         setOpen(true);
       },
     });
+  };
+
+  const handleOpenNewUpload = () => {
+    setPendingImage(null);
+    setOpen(true);
+  };
+
+  const handleOpenPendingUpload = (image: Image) => {
+    setPendingImage(image);
+    setOpen(true);
   };
 
   if (isPending) {
@@ -216,20 +271,21 @@ export const ImagesContainer = () => {
       </Breadcrumb>
 
       <Button
-        className="self-end text-md bg-blue-800"
-        onClick={() => setOpen(true)}
+        className="self-end text-md font-semibold bg-blue-800 mb-1 hover:bg-blue-700 transition-color"
+        onClick={handleOpenNewUpload}
       >
         <PlusIcon />
         Add Image
       </Button>
 
-      <VmImageUploadModal
+      <ImageUploadModal
         form={form}
         open={open}
+        pendingImage={pendingImage}
         setOpen={setOpen}
         handleCreate={handleCreate}
       />
-      <ImagesList images={images} />
+      <ImagesList images={images} onUploadPending={handleOpenPendingUpload} />
     </div>
   );
 };
@@ -244,27 +300,26 @@ const ImagesError = () => {
 
 interface ImagesListI {
   images: Image[];
+  onUploadPending: (image: Image) => void;
 }
 
-const ImagesList = ({ images }: ImagesListI) => {
+const ImagesList = ({ images, onUploadPending }: ImagesListI) => {
   const table = useReactTable({
     data: images,
-    columns: columns,
+    columns: getImageColumns({ onUploadPending }),
     getCoreRowModel: getCoreRowModel(),
   });
 
   return (
-    <div>
-      <table
-        style={{ border: "1px solid black", width: "100%", textAlign: "left" }}
-      >
-        <thead>
+    <div className="overflow-x-auto rounded border border-gray-300">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-blue-200">
           {table.getHeaderGroups().map((headerGroup, index) => (
             <tr key={index}>
               {headerGroup.headers.map((header, index) => (
                 <th
                   key={index}
-                  style={{ borderBottom: "1px solid black", padding: "8px" }}
+                  className="border-b border-gray-200 px-4 py-3 font-bold uppercase text-md tracking-wide"
                 >
                   {header.isPlaceholder
                     ? null
@@ -277,13 +332,16 @@ const ImagesList = ({ images }: ImagesListI) => {
             </tr>
           ))}
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-gray-100">
           {table.getRowModel().rows.map((row, index) => (
-            <tr key={index}>
+            <tr
+              key={index}
+              className="odd:bg-white even:bg-blue-50 cursor-pointer transition-colors hover:bg-gray-200 text-md"
+            >
               {row.getVisibleCells().map((cell, index) => (
                 <td
                   key={index}
-                  style={{ padding: "8px", borderBottom: "1px solid #eee" }}
+                  className="max-w-[125px] truncate px-4 py-3 text-gray-700"
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>

@@ -7,12 +7,15 @@ import os
 from pathlib import Path
 import shutil
 import struct
+import threading
 from typing import Annotated, get_args
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 import uvicorn
 import libvirt
+import yaml
 from fastapi import FastAPI, APIRouter, Depends, Form, HTTPException, Request, File, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
+from pydantic import ValidationError
 from starlette.requests import HTTPConnection
 from carthage import (
     AsyncInjector,
@@ -25,9 +28,14 @@ from carthage import (
     deployment)
 from carthage.modeling import CarthageLayout
 from carthage.dependency_injection import instantiation_roots
+
+from .serial_console_session_manager import SerialConsoleSessionManager
 from .models import *
 from .dynamic_models import FrontendDeploymentResult, map_deployment_result
+from . import entanglement
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from .models import DeviceWithImage
 
 def get_ainjector(connection: HTTPConnection)->AsyncInjector:
     return connection.app.state.layout.ainjector
@@ -79,18 +87,48 @@ async def regenerate_layout(request:Request):
         ainjector = AsyncInjector(injector)
         state.layout = await ainjector.get_instance_async(CarthageLayout)
 
+# Non-Blocking serial console stream buffers aren't automatically filled
+# instead kernal buffer reads occur when the event loop fires, unlike Blocking streams
+libvirt.virEventRegisterDefaultImpl()
 
+def _run_libvirt_event_loop():
+    while True:
+        libvirt.virEventRunDefaultImpl()
+
+_libvirt_event_thread = threading.Thread(
+    target=_run_libvirt_event_loop,
+    name="libvirt-event-loop",
+    daemon=True,
+)
+_libvirt_event_thread.start()
 
 
 api_v1 = APIRouter(prefix="/api/v1")
 
 @api_v1.get("/devices")
-async def get_devices(model_store:model_store_dependency)-> list[Device]:
-    return list(model_store.devices.values())
+async def get_devices(model_store:model_store_dependency)-> list[DeviceWithImage]:
+    devices = list(model_store.devices.values())
+
+    devicesWithImage = []
+    for device in devices:
+        devicesWithImage.append(populate_one_device_image(device, model_store))
+
+    return devicesWithImage
+
+@api_v1.get("/devices/{device_id}")
+async def get_device(device_id:str, model_store:model_store_dependency) -> DeviceWithImage:
+    if not device_id in model_store.devices:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    device = model_store.devices[device_id]
+    return populate_one_device_image(device, model_store)
+
+def populate_one_device_image(device:Device, model_store:model_store_dependency):
+    return DeviceWithImage.from_store(device, model_store).model_dump(mode='json')
 
 @api_v1.post('/devices')
 async def create_device(device:Device, request:Request, model_store:model_store_dependency):
-    model_store.devices[device.id] = device
+    model_store.store_synchronize(device)
     model_store.save()
     asyncio.ensure_future(regenerate_layout(request))
 
@@ -99,7 +137,7 @@ async def update_device(device_id:str, device:Device, request:Request, model_sto
     if not device_id in model_store.devices:
         raise HTTPException(status_code=404, detail="Device not found")
 
-    model_store.devices[device_id] = device
+    model_store.store_synchronize(device)
     model_store.save()
     asyncio.ensure_future(regenerate_layout(request))
 
@@ -108,7 +146,7 @@ async def delete_device(device_id:str, request:Request, model_store:model_store_
     if not device_id in model_store.devices:
         raise HTTPException(status_code=404, detail="Device not found")
 
-    model_store.devices.pop(device_id)
+    model_store.store_synchronize(model_store.devices[device_id], operation='delete')
     model_store.save()
     asyncio.ensure_future(regenerate_layout(request))
 
@@ -141,6 +179,32 @@ async def deployment_status(request: Request) -> FrontendDeploymentResult | None
         return map_deployment_result(result)
     return map_deployment_result(result, running=True)
 
+@api_v1.get('/models/export')
+async def export_models(model_store:model_store_dependency) -> Response:
+    return Response(
+        content=model_store.export_yaml(),
+        media_type='application/x-yaml',
+        headers={'Content-Disposition': 'attachment; filename="whs-models.yaml"'},
+    )
+
+@api_v1.post('/models/import')
+async def import_models(
+    request: Request,
+    model_store: model_store_dependency,
+    file: UploadFile = File(...),
+) -> JSONResponse:
+    try:
+        yaml_data = (await file.read()).decode('utf-8')
+        model_store.import_yaml(yaml_data)
+        model_store.save()
+    except (UnicodeDecodeError, ValidationError, ValueError, yaml.YAMLError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    finally:
+        await file.close()
+
+    asyncio.ensure_future(regenerate_layout(request))
+    return JSONResponse(content={"message": "Success"})
+
 web_server_key = InjectionKey('viper_whs.webserver')
 web_app_key = InjectionKey('viper_whs.app')
 @api_v1.get("/images")
@@ -156,7 +220,20 @@ async def upload_image(request:Request, model_store:model_store_dependency, file
     if not extension in get_args(VmImage.model_fields['type'].annotation):
         raise HTTPException(status_code=400, detail=f"Invalid extension type. Supported extensions are [{VmImage.type}]")
 
-    image_model = VmImage(name=filename, type=extension, description=description, version=version)
+    existing_ids = set(model_store.vm_images)
+    image_model = model_store.resolve_image(
+        device_type='vm',
+        image={
+            'name': filename,
+            'description': description,
+            'version': version,
+            'type': extension,
+        },
+    )
+    if not image_model.pending:
+        raise HTTPException(status_code=400, detail="Image already exists")
+    image_model.description = description
+    image_model.version = version
 
     config = await get_ainjector(request)(ConfigLayout)
     vm_image_path = f"{config.vm_image_dir}/images"
@@ -167,11 +244,13 @@ async def upload_image(request:Request, model_store:model_store_dependency, file
         with open(file_path, 'wb') as buffer:
             shutil.copyfileobj(file.file, buffer)
     except Exception:
+        if image_model.id not in existing_ids:
+            model_store.store_synchronize(image_model, operation='delete')
         raise HTTPException(status_code=500, detail="Something went wrong!")
     finally:
         await file.close()
 
-    model_store.vm_images[image_model.id] = image_model
+    image_model.pending = False
     model_store.save()
 
     return JSONResponse(content = {
@@ -187,7 +266,7 @@ async def delete_pcap(pcap_id:str, model_store:model_store_dependency):
     if not pcap_id in model_store.pcaps:
         raise HTTPException(status_code=404, detail="PCAP not found")
 
-    model_store.pcaps.pop(pcap_id)
+    model_store.store_synchronize(model_store.pcaps[pcap_id], operation='delete')
     model_store.save()
 
 PCAP_MAGIC_BYTES = [
@@ -313,7 +392,7 @@ async def upload_pcap(request:Request, model_store:model_store_dependency, file:
     finally:
         await file.close()
 
-    model_store.pcaps[pcap_model.id] = pcap_model
+    model_store.store_synchronize(pcap_model)
     model_store.save()
 
     return JSONResponse(content = {
@@ -399,7 +478,55 @@ async def vnc_websocket_proxy(
         await writer.wait_closed()
     except Exception:
         pass
-    print("Session closed")
+    print("VNC ws session closed")
+
+serial_console_session_manager = SerialConsoleSessionManager()
+
+@api_v1.websocket("/serial_websocket/{device_id}")
+async def serial_websocket_proxy(
+    ws: WebSocket,
+    device_id: str,
+    model_store: model_store_dependency,
+    libvirt_connection: libvirt_connection_dependency,
+):
+    device = model_store.devices.get(device_id)
+    if device is None:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    await ws.accept()
+
+    if device.type != 'vm' and device.type != 'container':
+        await ws.close(code=1008, reason="Only VM and Container devices support serial console")
+        return
+
+    device_name = f"whs-{device.name}"
+    try:
+        context = { libvirt_connection: libvirt_connection }
+        session = await serial_console_session_manager.get_or_create_session(device_name, device.type, context)
+    except (libvirt.libvirtError, OSError) as e:
+        print("ERROR", e)
+        await ws.close(code=1011)
+        return
+
+    session.subscribers.add(ws)
+
+    try:
+        while True:
+            data = await ws.receive_bytes()
+            await session.send_to_console(data)
+
+    except WebSocketDisconnect:
+        print("Websocket client disconnected")
+
+    session.subscribers.discard(ws)
+
+    if not session.subscribers:
+        session.close()
+        await serial_console_session_manager.remove_session(device_name)
+
+    print("Serial console session closed")
+
+api_v1.add_api_websocket_route('/entanglement', entanglement.entanglement_websocket)
 
 @inject(
     layout=InjectionKey(CarthageLayout, _ready=False),
@@ -422,7 +549,8 @@ async def build_web_app(layout, plugin, injector):
     app.state.base_injector = injector
     app.state.model_store = injector.get_instance(ModelStore)
     app.include_router(api_v1)
-
+    context = contextvars.Context()
+    context.run(entanglement.setup_entanglement, app, app.state.model_store)
     if (plugin.resource_dir/'../dist').exists():
         app.mount('/', SinglePageApplicationStaticFiles(directory=plugin.resource_dir/'../dist', html=True), name='frontend')
         return app
@@ -435,3 +563,4 @@ async def start_web_server(app):
                             )
     server = uvicorn.Server(config)
     asyncio.get_event_loop().create_task(server.serve(), context=contextvars.Context())
+    

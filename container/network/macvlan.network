@@ -1,0 +1,5 @@
+[Match]
+Name=xi-*
+Kind=macvlan
+[Network]
+Bridge=whs-lab

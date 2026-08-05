@@ -12,6 +12,7 @@ export const imageOutputSchema = z.object({
   description: z.string(),
   version: z.string(),
   type: z.string(),
+  pending: z.boolean(),
 });
 
 export const imageUploadInputSchema = z.object({

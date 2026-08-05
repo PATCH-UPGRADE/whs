@@ -121,7 +121,7 @@ jobs:
       - name: Run deployment tests
         env:
           WHS_TEST_VM_IMAGE_DIR: /srv/carthage/libvirt/whs-ci
-        run: mkdir -p /srv/whs-pytest && cd layout && pytest --basetemp=/srv/whs-pytest
+        run: mkdir -p /srv/whs-pytest && cd layout && pytest -vv --basetemp=/srv/whs-pytest
 
   container_build_production:
     name: Build production container image (${{ matrix.image_suffix }})

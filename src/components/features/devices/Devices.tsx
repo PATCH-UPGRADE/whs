@@ -1,13 +1,15 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import {
   flexRender,
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { useEntangledList } from "entanglement-react";
 import { PlusIcon, SlashIcon } from "lucide-react";
 import { useState } from "react";
-import { type UseFormReturn, useForm } from "react-hook-form";
+import { type UseFormReturn, useForm, useWatch } from "react-hook-form";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -46,17 +48,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Device } from "@/models";
 import { getImages } from "../images/hooks";
 import { columns } from "./columns";
-import { getDevices, useCreateDevice } from "./hooks";
+import { useCreateDevice } from "./hooks";
 import {
-  type Device,
+  DEVICE_ARCHITECTURE_TYPE_TO_DISPLAY_TEXT,
+  DEVICE_TYPE_TO_DISPLAY_TEXT,
   DeviceArchitectureType,
   type DeviceFormValues,
   DeviceType,
   DiskControllerType,
   deviceInputSchema,
 } from "./types";
+
+const allDeviceArchitectureTypes = Object.values(DeviceArchitectureType);
 
 export const DeviceCreateUpdateModal = ({
   form,
@@ -91,9 +97,20 @@ export const DeviceCreateUpdateModal = ({
     ? "Modify Device fields then press 'Update Device' below when you are finished"
     : "Configure a new Device then press 'Create Device' below when you are finished";
 
+  const selectedDeviceType = useWatch({ control: form.control, name: "type" });
+
+  // deviceArchitecture won't be shown for bareMetal
+  const deviceArchitectureTypeOptions =
+    selectedDeviceType === DeviceType.container
+      ? allDeviceArchitectureTypes
+      : allDeviceArchitectureTypes.slice(0, -1);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="p-0 rounded-2xl w-6xl lg:max-w-2xl overflow-hidden">
+      <DialogContent
+        className="p-0 rounded-2xl w-6xl lg:max-w-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         <DialogHeader className="px-6 py-4 border-b gap-1">
           <DialogTitle className="text-xl">{verbLabel} Device</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -131,7 +148,7 @@ export const DeviceCreateUpdateModal = ({
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description *</FormLabel>
+                    <FormLabel>Description</FormLabel>
                     <FormDescription>
                       Describe the device role or modality.
                     </FormDescription>
@@ -141,40 +158,6 @@ export const DeviceCreateUpdateModal = ({
                         placeholder="e.g., Heart rate monitor"
                         {...field}
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="image_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Image ID</FormLabel>
-                    <FormDescription>
-                      TODO: If no ID is provided a default image may be used
-                    </FormDescription>
-                    <FormControl>
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select Image" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            <SelectLabel>Select Image</SelectLabel>
-                            {images?.map(({ id, name }, index) => (
-                              <SelectItem value={id} key={index}>
-                                {name}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -209,7 +192,9 @@ export const DeviceCreateUpdateModal = ({
                                 className="rounded-lg border-2 border-primary hover:border-primary/50"
                               />
                             </FormControl>
-                            <FormLabel htmlFor={type}>{type}</FormLabel>
+                            <FormLabel htmlFor={type}>
+                              {DEVICE_TYPE_TO_DISPLAY_TEXT[type]}
+                            </FormLabel>
                           </FormItem>
                         ))}
                       </RadioGroup>
@@ -219,42 +204,89 @@ export const DeviceCreateUpdateModal = ({
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="cloud_init"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cloud Init *</FormLabel>
-                    <FormDescription>
-                      Enable or disable cloud-init customization for this
-                      device.
-                    </FormDescription>
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {selectedDeviceType === DeviceType.vm && (
+                <FormField
+                  control={form.control}
+                  name="vm_image_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Image ID</FormLabel>
 
-              <FormField
-                control={form.control}
-                name="architecture"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Architecture Type *</FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={(val: string) => {
-                          field.onChange(val);
-                        }}
-                        value={field.value}
-                      >
-                        {Object.values(DeviceArchitectureType).map(
-                          (type, i) => (
+                      <FormDescription>
+                        Type to begin searching for a uploaded VM image (by
+                        filename)
+                      </FormDescription>
+
+                      <FormControl>
+                        <Select
+                          value={field.value ?? ""}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select Image" />
+                          </SelectTrigger>
+
+                          <SelectContent>
+                            <SelectGroup>
+                              <SelectLabel>Select Image</SelectLabel>
+
+                              {images?.map(({ id, name, pending }, index) => (
+                                <SelectItem value={id} key={index}>
+                                  {pending ? `${name} (pending)` : name}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {selectedDeviceType === DeviceType.container && (
+                <FormField
+                  control={form.control}
+                  name="container_image_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Image *</FormLabel>
+                      <FormDescription>
+                        Type an image reference like "nginx:latest" or
+                        "ghcr.io/my/cool/image:123"
+                      </FormDescription>
+                      <FormControl>
+                        <Input
+                          type="text"
+                          list="image-options"
+                          placeholder="e.g., nginx:latest"
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {selectedDeviceType !== DeviceType.bareMetal && (
+                <FormField
+                  control={form.control}
+                  name="architecture"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Architecture Type *</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={(val: string) => {
+                            field.onChange(val);
+                          }}
+                          value={field.value}
+                        >
+                          {deviceArchitectureTypeOptions.map((type, i) => (
                             <FormItem
                               key={i}
                               className="flex gap-x-2 hover:border-primary/50 transition-colors"
@@ -265,169 +297,202 @@ export const DeviceCreateUpdateModal = ({
                                   className="rounded-lg border-2 border-primary hover:border-primary/50"
                                 />
                               </FormControl>
-                              <FormLabel htmlFor={type}>{type}</FormLabel>
+                              <FormLabel htmlFor={type}>
+                                {DEVICE_ARCHITECTURE_TYPE_TO_DISPLAY_TEXT[type]}
+                              </FormLabel>
                             </FormItem>
-                          ),
-                        )}
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                          ))}
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
-              <FormField
-                control={form.control}
-                name="cpus"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>CPU Cores *</FormLabel>
-                    <FormDescription>
-                      Set the number of virtual CPU cores assigned to this
-                      device.
-                    </FormDescription>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="2"
-                        {...field}
-                        onChange={(e) => {
-                          const value = parseInt(e.target.value, 10);
-                          field.onChange(Number.isNaN(value) ? 2 : value);
-                        }}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Recommended Minimum: 2 CPU Cores
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {selectedDeviceType === DeviceType.vm && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="display"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Require Display *</FormLabel>
+                        <FormDescription>
+                          Specify whether the device needs a graphical display.
+                        </FormDescription>
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="memory"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Memory *</FormLabel>
-                    <FormDescription>
-                      Set the memory allocation for the device in MB.
-                    </FormDescription>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="4096"
-                        {...field}
-                        onChange={(e) => {
-                          const value = parseInt(e.target.value, 10);
-                          field.onChange(Number.isNaN(value) ? 4096 : value);
-                        }}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Recommended Minimum: 4096 MBs
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={form.control}
+                    name="cloud_init"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Cloud Init *</FormLabel>
+                        <FormDescription>
+                          Enable or disable cloud-init customization for this
+                          device.
+                        </FormDescription>
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="disk"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Disk *</FormLabel>
-                    <FormDescription>
-                      Set the device disk size in MB.
-                    </FormDescription>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="20480"
-                        {...field}
-                        onChange={(e) => {
-                          const value = parseInt(e.target.value, 10);
-                          field.onChange(Number.isNaN(value) ? 20480 : value);
-                        }}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Recommended Minimum: 20480 MBs (20 GBs)
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={form.control}
+                    name="cpus"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>CPU Cores *</FormLabel>
+                        <FormDescription>
+                          Set the number of virtual CPU cores assigned to this
+                          device.
+                        </FormDescription>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="2"
+                            {...field}
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value, 10);
+                              field.onChange(Number.isNaN(value) ? 2 : value);
+                            }}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Recommended Minimum: 2 CPU Cores
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="disk_controller"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Disk Controller *</FormLabel>
-                    <FormDescription>
-                      Select the virtual disk controller presented to the
-                      device.
-                    </FormDescription>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={(val: string) => {
-                          field.onChange(val);
-                        }}
-                        value={field.value}
-                      >
-                        {Object.values(DiskControllerType).map((type, i) => (
-                          <FormItem
-                            key={i}
-                            className="flex gap-x-2 hover:border-primary/50 transition-colors"
+                  <FormField
+                    control={form.control}
+                    name="memory"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Memory *</FormLabel>
+                        <FormDescription>
+                          Set the memory allocation for the device in MB.
+                        </FormDescription>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="4096"
+                            {...field}
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value, 10);
+                              field.onChange(
+                                Number.isNaN(value) ? 4096 : value,
+                              );
+                            }}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Recommended Minimum: 4096 MBs
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="disk"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Disk *</FormLabel>
+                        <FormDescription>
+                          Set the device disk size in MB.
+                        </FormDescription>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="20480"
+                            {...field}
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value, 10);
+                              field.onChange(
+                                Number.isNaN(value) ? 20480 : value,
+                              );
+                            }}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Recommended Minimum: 20480 MBs (20 GBs)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="disk_controller"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Disk Controller *</FormLabel>
+                        <FormDescription>
+                          Select the virtual disk controller presented to the
+                          device.
+                        </FormDescription>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={(val: string) => {
+                              field.onChange(val);
+                            }}
+                            value={field.value}
                           >
-                            <FormControl>
-                              <RadioGroupItem
-                                value={type}
-                                className="rounded-lg border-2 border-primary hover:border-primary/50"
-                              />
-                            </FormControl>
-                            <FormLabel htmlFor={type}>{type}</FormLabel>
-                          </FormItem>
-                        ))}
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                            {Object.values(DiskControllerType).map(
+                              (type, i) => (
+                                <FormItem
+                                  key={i}
+                                  className="flex gap-x-2 hover:border-primary/50 transition-colors"
+                                >
+                                  <FormControl>
+                                    <RadioGroupItem
+                                      value={type}
+                                      className="rounded-lg border-2 border-primary hover:border-primary/50"
+                                    />
+                                  </FormControl>
+                                  <FormLabel htmlFor={type}>{type}</FormLabel>
+                                </FormItem>
+                              ),
+                            )}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
 
-              <FormField
-                control={form.control}
-                name="display"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Require Display *</FormLabel>
-                    <FormDescription>
-                      Specify whether the device needs a graphical display.
-                    </FormDescription>
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
+              {/* <FormField
                 control={form.control}
                 name="dhcp"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>DHCP *</FormLabel>
                     <FormDescription>
-                      Enable DHCP for automatic addressing, or disable it and
-                      provide static network settings below.
+                      Enable DHCP for automatic addressing, or disable it
+                      and provide static network settings below.
                     </FormDescription>
                     <FormControl>
                       <Checkbox
@@ -438,7 +503,7 @@ export const DeviceCreateUpdateModal = ({
                     <FormMessage />
                   </FormItem>
                 )}
-              />
+              /> */}
 
               <FormField
                 control={form.control}
@@ -447,8 +512,8 @@ export const DeviceCreateUpdateModal = ({
                   <FormItem>
                     <FormLabel>MAC Address</FormLabel>
                     <FormDescription>
-                      Optionally set a specific MAC address instead of using an
-                      automatic assignment.
+                      Required for BARE METAL devices. Set a specific MAC
+                      address instead of using an automatic assignment.
                     </FormDescription>
                     <FormControl>
                       <Input
@@ -549,6 +614,7 @@ export const DeviceCreateUpdateModal = ({
             </div>
           </form>
         </Form>
+
         <DialogFooter className="px-6 py-4 bg-muted border-t justify-between!">
           <DialogClose asChild>
             <Button variant="outline">Cancel</Button>
@@ -563,15 +629,7 @@ export const DeviceCreateUpdateModal = ({
 };
 
 export const DevicesContainer = () => {
-  const {
-    data: devices,
-    isPending,
-    isError,
-    error,
-  } = useQuery({
-    queryKey: ["devices"],
-    queryFn: getDevices,
-  });
+  const devices = useEntangledList(Device);
 
   const createDevice = useCreateDevice();
   const [open, setOpen] = useState(false);
@@ -588,8 +646,9 @@ export const DevicesContainer = () => {
       memory: 4096, // Megabytes
       disk: 20480, // Megabytes
       disk_controller: "virtio",
-      display: false,
-      image_id: "",
+      display: true,
+      vm_image_id: null,
+      container_image_id: null,
       dhcp: true,
       mac_address: undefined,
       ipv4_manual: undefined,
@@ -599,6 +658,11 @@ export const DevicesContainer = () => {
   });
 
   const handleCreate = (item: DeviceFormValues) => {
+    // handle edge case where user sets container to native then flips back to a VM
+    if (item.architecture === "native" && item.type === "vm") {
+      item.architecture = "x86_64";
+    }
+
     createDevice.mutate(item, {
       onSuccess: () => {
         form.reset();
@@ -609,15 +673,6 @@ export const DevicesContainer = () => {
       },
     });
   };
-
-  if (isPending) {
-    return <DevicesLoading />;
-  }
-
-  if (isError) {
-    console.error(error);
-    return <DevicesError />;
-  }
 
   return (
     <div className="flex flex-col">
@@ -633,7 +688,7 @@ export const DevicesContainer = () => {
       </Breadcrumb>
 
       <Button
-        className="self-end text-md bg-blue-800"
+        className="self-end text-md font-semibold bg-blue-800 mb-1 hover:bg-blue-700 transition-color"
         onClick={() => setOpen(true)}
       >
         <PlusIcon />
@@ -651,37 +706,29 @@ export const DevicesContainer = () => {
   );
 };
 
-const DevicesLoading = () => {
-  return <div>Devices loading...</div>;
-};
-
-const DevicesError = () => {
-  return <div>An error occured while loading Devices!</div>;
-};
-
 interface DevicesListI {
-  devices: Device[];
+  devices: readonly Device[];
 }
 
 const DevicesList = ({ devices }: DevicesListI) => {
+  const navigate = useNavigate();
+
   const table = useReactTable({
-    data: devices,
+    data: devices as Device[], // useReactTable doesn't support readonly typeq
     columns: columns,
     getCoreRowModel: getCoreRowModel(),
   });
 
   return (
-    <div>
-      <table
-        style={{ border: "1px solid black", width: "100%", textAlign: "left" }}
-      >
-        <thead>
+    <div className="overflow-x-auto rounded border border-gray-300">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-blue-200">
           {table.getHeaderGroups().map((headerGroup, index) => (
             <tr key={index}>
               {headerGroup.headers.map((header, index) => (
                 <th
                   key={index}
-                  style={{ borderBottom: "1px solid black", padding: "8px" }}
+                  className="border-b border-gray-200 px-4 py-3 font-bold uppercase text-md tracking-wide"
                 >
                   {header.isPlaceholder
                     ? null
@@ -694,13 +741,22 @@ const DevicesList = ({ devices }: DevicesListI) => {
             </tr>
           ))}
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-gray-100">
           {table.getRowModel().rows.map((row, index) => (
-            <tr key={index}>
+            <tr
+              key={index}
+              onClick={() =>
+                navigate({
+                  to: "/devices/$deviceId",
+                  params: { deviceId: row.original.id },
+                })
+              }
+              className="odd:bg-white even:bg-blue-50 cursor-pointer transition-colors hover:bg-gray-200 text-md"
+            >
               {row.getVisibleCells().map((cell, index) => (
                 <td
                   key={index}
-                  style={{ padding: "8px", borderBottom: "1px solid #eee" }}
+                  className="max-w-[125px] truncate px-4 py-3 text-gray-700"
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>

@@ -12,6 +12,7 @@ COPY dist /app/dist
 COPY container/network /etc/systemd/network
 COPY container/subuid /etc/subuid
 COPY container/subgid /etc/subgid
+COPY container/00-search.conf /etc/containers/registries.conf.d
 COPY container/containers.conf  /etc/containers/containers.conf
 COPY container/storage.conf /etc/containers/storage.conf
 RUN podman network create net \
@@ -23,6 +24,7 @@ RUN podman network create net \
               -o mode=unmanaged && rm -rf /run/containers /run/libpod
 COPY container/podman.json /etc/containers/networks/podman.json
 COPY container/podman.json /srv/whs/containers/networks/podman.json
+RUN cp /srv/whs/containers/networks/net.json /etc/containers/networks
 LABEL run_whs 'podman run -d -ti --privileged -p 8080:8080 --group-add=keep-groups -v$NAME:/srv/whs --name $NAME $IMAGE'
 LABEL develop_whs 'podman run -d -ti --privileged -p 8080:8080 --group-add=keep-groups -v${PWD}:/app -v$NAME:/srv/whs --name $NAME $IMAGE'
 VOLUME /srv/whs

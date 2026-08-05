@@ -7,11 +7,14 @@
     "moduleResolution": "bundler",
     "esModuleInterop": true,
     "jsx": "preserve",
-    "types": ["vite/client"],
+    "allowJs": true,
+    "checkJs": false,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "types": ["vite/client", "node"],
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.js"],
   "exclude": ["node_modules"]
 }
