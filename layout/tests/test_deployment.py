@@ -74,8 +74,8 @@ async def test_layout_vm_image_factory_raises_when_pending(ainjector, model_stor
         type="vm",
         vm_image_id=test_image.id,
     )
-    model_store.vm_images[test_image.id] = test_image
-    model_store.devices[test_device.id] = test_device
+    model_store.store_synchronize(test_image)
+    model_store.store_synchronize(test_device)
     model_store.save()
 
     layout = await ainjector.get_instance_async(CarthageLayout)
