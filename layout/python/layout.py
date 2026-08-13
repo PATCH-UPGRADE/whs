@@ -139,11 +139,6 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
 
         def build_container(device):
             device_name = device.name
-            device_dhcp = device.dhcp
-            device_mac = device.mac_address if device.mac_address else persistent_random_mac
-            device_ipv4 = device.ipv4_manual
-            device_gateway = device.gateway
-            device_dns_servers = device.dns_servers
             device_image = model_store.get_device_container_image(device)
 
             if device_image is None:
@@ -177,12 +172,6 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
             return whs_bare_metal
 
         def build_vm(device):
-
-            device_dhcp = device.dhcp
-            device_mac = device.mac_address if device.mac_address else persistent_random_mac
-            device_ipv4 = device.ipv4_manual
-            device_gateway = device.gateway
-            device_dns_servers = device.dns_servers
             device_image = model_store.get_device_vm_image(device)
             image_dir = Path(config.vm_image_dir) / "images"
             if isinstance(device_image, VmImage) and not device_image.check_pending(image_dir, model_store):
