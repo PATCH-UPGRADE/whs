@@ -58,16 +58,31 @@ def build_v4_config(device_model) -> Optional[V4Config]:
     return None
 
 
-@inject(device_model=InjectionKey('device_model'))
-def build_mac(device_model) -> str:
-    '''Build MAC address from device model.'''
+@inject(
+    device_model=InjectionKey('device_model'),
+    injector=Injector,
+)
+def build_mac(interface, device_model, injector) -> Optional[str]:
+    '''Use the user-defined MAC, or ask Carthage for a persistent random one.'''
     if device_model.mac_address:
         return device_model.mac_address
-    return persistent_random_mac
+    return injector(persistent_random_mac, interface=interface)
+
+
+@inject(device_model=InjectionKey('device_model'))
+def build_dns_name(device_model) -> str:
+    '''Build the fully qualified DNS name for a device.'''
+    return f'{device_model.name}.whs.local'
 
 
 class DeviceNetworkConfig(NetworkConfigModel):
-    add('eth0', mac=build_mac, v4_config=build_v4_config, net=injector_access('bridge_net'))
+    add(
+        'eth0', 
+        mac=build_mac, 
+        dns_name=build_dns_name, 
+        v4_config=build_v4_config, 
+        net=injector_access('bridge_net'),
+        )
 
 
 @inject(model_store=ModelStore, ainjector=AsyncInjector)
@@ -101,11 +116,6 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
                 dns_servers=('10.20.100.2',),
                 gateway='10.20.100.1',
             )
-        
-        class net_config(NetworkConfigModel):
-            add('eth0', mac=persistent_random_mac, 
-                net=injector_access('bridge_net'), 
-                v4_config=V4Config(dhcp=True))
             
         class router(DhcpRole, SystemdNetworkModelMixin, MachineModel):
             override_dependencies = True
@@ -149,6 +159,10 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
                 add_provider(machine_implementation_key, dependency_quote(PodmanContainer))
                 add_provider(oci_container_image, container_image)
                 name = device_name
+                podman_options = [
+                    '--dns=10.20.100.2',
+                    '--dns-search=whs.local',
+                ]
 
             return whs_container
 
