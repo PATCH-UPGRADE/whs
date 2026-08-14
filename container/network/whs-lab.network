@@ -6,9 +6,9 @@ Name=whs-lab
 [Network]
 
 Address=10.20.100.1/24
-
-Domains=~whs.local
+Domains=whs.local
 DNS=10.20.100.2
+DNSDefaultRoute=no
 IPMasquerade=yes
 
 [DHCPv4]
