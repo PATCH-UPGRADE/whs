@@ -72,7 +72,8 @@ def build_mac(interface, device_model, injector) -> Optional[str]:
 @inject(device_model=InjectionKey('device_model'))
 def build_dns_name(device_model) -> str:
     '''Build the fully qualified DNS name for a device.'''
-    return f'{device_model.name}.whs.local'
+    name = device_model.name
+    return name if '.' in name else f'{name}.whs.local'
 
 
 class DeviceNetworkConfig(NetworkConfigModel):
@@ -140,6 +141,8 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
         def build_container(device):
             device_name = device.name
             device_image = model_store.get_device_container_image(device)
+            device_dns_servers = device.dns_servers or ('10.20.100.2',)
+            device_dns_options = [f'--dns={server}' for server in device_dns_servers]
 
             if device_image is None:
                 @inject()
@@ -155,7 +158,7 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
                 add_provider(oci_container_image, container_image)
                 name = device_name
                 podman_options = [
-                    '--dns=10.20.100.2',
+                    *device_dns_options,
                     '--dns-search=whs.local',
                 ]
 
