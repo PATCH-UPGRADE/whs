@@ -196,7 +196,8 @@ export const columns: ColumnDef<Device>[] = [
           disk_controller: data.disk_controller,
           display: data.display,
           vm_image_id: data.vm_image_id,
-          container_image_id: data.container_image_id,
+          container_image_id:
+            data.container_image?.name ?? data.container_image_id,
           dhcp: data.dhcp,
           mac_address: data.mac_address ?? undefined,
           ipv4_manual: data.ipv4_manual ?? undefined,
