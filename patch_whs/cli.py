@@ -31,7 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
     start_parser.add_argument(
         "--image",
         default=DEFAULT_IMAGE,
-        help="Container image to pull and start",
+        help="Container image to start",
     )
     start_parser.add_argument(
         "--develop",
@@ -230,7 +230,8 @@ def handle_start(args: argparse.Namespace) -> int:
     ensure_podman_ready()
     ensure_windows_nested_virtualization()
     
-    run_podman_command(["podman", "pull", args.image])
+    if not args.image.startswith("localhost/"):
+        run_podman_command(["podman", "pull", args.image])
     labels = inspect_image_labels(args.image)
     label_name = DEVELOP_LABEL if args.develop else RUN_LABEL
     try:
