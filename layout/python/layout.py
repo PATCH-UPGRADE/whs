@@ -111,13 +111,14 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
             podman_container_dns = True
             v4_config = V4Config(
                 network='10.20.100.0/24',
-                dhcp=False,
+                dhcp=True,
                 pool=('10.20.100.10', '10.20.100.200'),
                 domains='whs.local',
                 dns_servers=('10.20.100.2',),
                 gateway='10.20.100.1',
             )
-            
+
+            podman_v4_config = V4Config(dhcp=False)
         class router(DhcpRole, SystemdNetworkModelMixin, MachineModel):
             override_dependencies = True
             add_provider(machine_implementation_key, dependency_quote(PodmanContainer))
