@@ -8,7 +8,7 @@ import { DevicesContainer } from "./components/features/devices/Devices";
 import { ImagesContainer } from "./components/features/images/Images";
 import { ImportExportContainer } from "./components/features/import-export/ImportExport";
 import { PcapsContainer } from "./components/features/pcaps/Pcaps";
-import { TopologiesContainer } from "./components/features/topologies/Topologies";
+import { DeployTopologyContainer } from "./components/features/topologies/Topologies";
 
 const rootRoute = createRootRoute();
 
@@ -33,15 +33,20 @@ const routes = [
     path: "/images",
     component: () => <ImagesContainer />,
   }),
-  createRoute({
-    getParentRoute: () => rootRoute,
-    path: "/topologies",
-    component: () => <TopologiesContainer />,
-  }),
+  // createRoute({
+  //   getParentRoute: () => rootRoute,
+  //   path: "/topologies",
+  //   component: () => <TopologiesContainer />,
+  // }),
   createRoute({
     getParentRoute: () => rootRoute,
     path: "/pcaps",
     component: () => <PcapsContainer />,
+  }),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/deploy",
+    component: () => <DeployTopologyContainer />,
   }),
   createRoute({
     getParentRoute: () => rootRoute,
