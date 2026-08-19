@@ -34,7 +34,7 @@ def test_model_store_saves_into_temp_state_dir(model_store, state_dir: Path):
         name="tester03",
         description="Third test device",
     )
-    model_store.devices[device.id] = device
+    model_store.store_synchronize(device)
     model_store.save()
 
     saved = (state_dir / "model_store" / "devices.yml").read_text()
@@ -66,8 +66,8 @@ def _add_container_export_data(model_store):
         type="container",
         container_image_id=image.id,
     )
-    model_store.container_images[image.id] = image
-    model_store.devices[device.id] = device
+    model_store.store_synchronize(image)
+    model_store.store_synchronize(device)
 
 
 def test_model_store_export_yaml_matches_regression_fixture(model_store):
@@ -87,7 +87,7 @@ def test_model_store_import_yaml_round_trips_and_merges_existing_data(model_stor
         description="Third test device",
     )
     imported_store = ModelStore()
-    imported_store.devices[extra_device.id] = extra_device
+    imported_store.store_synchronize(extra_device)
 
     imported_store.import_yaml(exported)
     round_tripped = yaml.safe_load(imported_store.export_yaml())
@@ -157,7 +157,7 @@ def test_upload_image_reuses_pending_vm_image(app, model_store):
         type="qcow2",
         pending=True,
     )
-    model_store.vm_images[pending_image.id] = pending_image
+    model_store.store_synchronize(pending_image)
     client = TestClient(app)
 
     response = client.post(
@@ -181,7 +181,7 @@ def test_upload_image_rejects_existing_non_pending_vm_image(app, model_store):
         type="qcow2",
         pending=False,
     )
-    model_store.vm_images[existing_image.id] = existing_image
+    model_store.store_synchronize(existing_image)
     client = TestClient(app)
 
     response = client.post(
