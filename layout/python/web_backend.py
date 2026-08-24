@@ -525,6 +525,11 @@ async def serial_websocket_proxy(
 
     print("Serial console session closed")
 
+# Capture any previously unmatched requests and return a 404
+@api_v1.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+async def api_v1_not_found(full_path: str):
+    raise HTTPException(status_code=404, detail=f"Not Found: /api/v1/{full_path}")
+
 @inject(
     layout=InjectionKey(CarthageLayout, _ready=False),
     plugin=InjectionKey(CarthagePlugin, name='whs'),
