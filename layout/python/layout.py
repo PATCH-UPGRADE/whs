@@ -1,4 +1,5 @@
 import asyncio
+import os
 from carthage import *
 import carthage.libvirt
 from carthage.modeling import *
@@ -77,6 +78,12 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
     model_store.load()
     model_store.validate_references()
     asyncio.ensure_future(ainjector.get_instance_async(web_server_key))
+
+    devices = model_store.devices.values()
+    include_device_names = [d.name for d in devices if d.enabled_for_deployment]
+    exclude_device_names = [d.name for d in devices if not d.enabled_for_deployment]
+    os.environ['CARTHAGE_DEPLOY_INCLUDE'] = ' '.join(include_device_names)
+    os.environ['CARTHAGE_DEPLOY_EXCLUDE'] = ' '.join(exclude_device_names)
 
     class layout(CarthageLayout):
         layout_name = 'whs'
@@ -197,10 +204,6 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
             return whs_vm
 
         for id, device in model_store.devices.items():
-            if not device.enabled_for_deployment:
-                print(f'Skipped building device: [{device.name}], "enabled_for_deployment" is false.')
-                continue
-
             if device.type == 'vm':
                 new_vm = build_vm(device)
             elif device.type == 'container':
