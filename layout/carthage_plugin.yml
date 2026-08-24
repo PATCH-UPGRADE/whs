@@ -2,7 +2,7 @@ name: whs
 dependencies:
   - deb: python3-fastapi
   - deb: python3-python-multipart
-  - pypi: git+https://github.com/hadron/entanglement
+  - pypi: entanglement @ git+https://github.com/hadron/entanglement@master
 config:
   authorized_keys: /dev/null
   base_dir: /srv/whs

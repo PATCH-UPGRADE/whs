@@ -1,4 +1,4 @@
-import { SyncManager, SyncRegistry } from "entanglement-react";
+import { SyncManager, SyncRegistry } from "entanglement-core";
 import {
   PersistentSynchronizable,
   SyncOwner,
