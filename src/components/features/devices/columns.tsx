@@ -4,11 +4,11 @@ import { SquarePen, TrashIcon } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
+import type { Device } from "@/models";
 import { DeviceCreateUpdateModal } from "./Devices";
 import { useDeleteDevice, useUpdateDevice } from "./hooks";
 import {
   DEVICE_TYPE_TO_DISPLAY_TEXT,
-  type Device,
   type DeviceFormValues,
   DeviceType,
   deviceInputSchema,
@@ -186,17 +186,18 @@ export const columns: ColumnDef<Device>[] = [
         resolver: zodResolver(deviceInputSchema),
         defaultValues: {
           name: data.name,
-          description: data.description,
+          description: data.description ?? "",
           type: data.type,
-          architecture: data.architecture,
+          architecture: data.architecture ?? undefined,
           cloud_init: data.cloud_init,
           cpus: data.cpus,
           memory: data.memory,
           disk: data.disk,
-          disk_controller: data.disk_controller,
+          disk_controller: data.disk_controller ?? undefined,
           display: data.display,
           vm_image_id: data.vm_image_id,
-          container_image_id: data.container_image_id,
+          container_image_id:
+            data.container_image?.name ?? data.container_image_id,
           dhcp: data.dhcp,
           mac_address: data.mac_address ?? undefined,
           ipv4_manual: data.ipv4_manual ?? undefined,
