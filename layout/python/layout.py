@@ -85,6 +85,21 @@ class DeviceNetworkConfig(NetworkConfigModel):
         net=injector_access('bridge_net'),
         )
 
+class RouterModel(DhcpRole, SystemdNetworkModelMixin, MachineModel):
+    '''
+    A router which may be deployed in different subnets across a network topology.
+    Provide the network being used & NetworkConfigModel.
+    '''
+    override_dependencies = True
+    add_provider(machine_implementation_key, dependency_quote(PodmanContainer))
+    add_provider(oci_container_image, injector_access(WhsRouter))
+    podman_options = [
+        '--cap-add=NET_ADMIN',
+        '--cap-add=NET_RAW',
+        '--sysctl', 'net.ipv4.ip_forward=1',
+    ]
+    dnsmasq_replace_resolv_conf = False
+
 
 @inject(model_store=ModelStore, ainjector=AsyncInjector)
 async def build_layout(model_store, ainjector) -> CarthageLayout:
@@ -108,34 +123,39 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
             bridge_name = 'whs-lab'
             podman_bridge_name = 'whs-lab'
             podman_unmanaged = True
-            podman_container_dns = True
+            podman_container_dns = False
             v4_config = V4Config(
                 network='10.20.100.0/24',
                 dhcp=True,
                 pool=('10.20.100.10', '10.20.100.200'),
                 domains='whs.local',
                 dns_servers=('10.20.100.2',),
-                gateway='10.20.100.1',
+                gateway='10.20.100.2',
             )
 
             podman_v4_config = V4Config(dhcp=False)
-        class router(DhcpRole, SystemdNetworkModelMixin, MachineModel):
-            override_dependencies = True
-            add_provider(machine_implementation_key, dependency_quote(PodmanContainer))
-            add_provider(oci_container_image, injector_access(WhsRouter))
-            podman_options = ['--cap-add=NET_ADMIN', '--cap-add=NET_RAW', '--sysctl', 'net.ipv4.ip_forward=1']
-            dnsmasq_replace_resolv_conf = False
+
+        class router(RouterModel):
+            name = 'router'
             net = injector_access('bridge_net')
-            
+
+            # Override to attach default podman network to primary WHS router
+            podman_options = [
+                '--cap-add=NET_ADMIN',
+                '--cap-add=NET_RAW',
+                '--sysctl', 'net.ipv4.ip_forward=1',
+                '--network=podman',
+            ]
+
             class net_config(NetworkConfigModel):
                 add(
-                    'eth0', mac=persistent_random_mac,
+                    'lan0', mac=persistent_random_mac,
                     net=injector_access('bridge_net'),
                     v4_config=V4Config(
                         address='10.20.100.2',
-                        dns_servers=('10.20.100.1', 
-                                    ),
-                        dhcp=False
+                        dhcp=False,
+                        dns_servers=(),
+                        masquerade=True,
                     )
                 )
 

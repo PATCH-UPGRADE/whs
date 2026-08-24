@@ -20,7 +20,10 @@ RUN podman network create net \
               -o com.docker.network.bridge.name=whs-lab \
               --label carthage.layout=whs \
               --subnet 10.20.100.0/24 \
-              --gateway 10.20.100.1 \
+              --gateway 10.20.100.2 \
+              --disable-dns \
+              --route 0.0.0.0/0,10.20.100.2,200 \
+              -o no_default_route=1 \
               -o mode=unmanaged && rm -rf /run/containers /run/libpod
 COPY container/podman.json /etc/containers/networks/podman.json
 COPY container/podman.json /srv/whs/containers/networks/podman.json
