@@ -15,7 +15,7 @@
 import {
   PersistentSynchronizable,
   relationship,
-} from "@hadron/entanglement/persistence";
+} from "entanglement-core/persistence";
 
 // ============================================================================
 // VmImage Model

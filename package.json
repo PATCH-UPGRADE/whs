@@ -14,7 +14,6 @@
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.8",
-    "@hadron/entanglement": "file:../../entanglement/javascript",
     "@hookform/resolvers": "^5.2.2",
     "@novnc/novnc": "^1.7.0",
     "@tanstack/react-query": "^5.99.0",
@@ -24,7 +23,8 @@
     "@xterm/xterm": "^6.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "entanglement-react": "file:../../entanglement-react",
+    "entanglement-core": "^0.34.2",
+    "entanglement-react": "^0.2.2",
     "lucide-react": "^1.7.0",
     "radix-ui": "^1.4.3",
     "react": "^19.2.4",

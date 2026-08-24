@@ -1,4 +1,4 @@
-import type { SyncManager, SyncRegistry } from "@hadron/entanglement";
+import type { SyncManager, SyncRegistry } from "entanglement-core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
 import { EntanglementProvider } from "entanglement-react";

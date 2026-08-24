@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { SyncOwner } from "@hadron/entanglement/persistence";
+import { SyncOwner } from "entanglement-core/persistence";
 import { renderHook, waitFor } from "@testing-library/react";
 import { EntanglementProvider, useEntangledList } from "entanglement-react";
 import type { ReactNode } from "react";

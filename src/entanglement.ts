@@ -1,8 +1,8 @@
-import { SyncManager, SyncRegistry } from "@hadron/entanglement";
+import { SyncManager, SyncRegistry } from "entanglement-react";
 import {
   PersistentSynchronizable,
   SyncOwner,
-} from "@hadron/entanglement/persistence";
+} from "entanglement-core/persistence";
 import registerWhsModels from "@/entanglement_schemas/whs_models";
 import { getCarthageApiUrl } from "@/fetcher";
 import { ContainerImage, Device, VmImage } from "@/models";
