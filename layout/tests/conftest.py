@@ -19,6 +19,29 @@ LAYOUT_ROOT = PROJECT_ROOT / "layout"
 if str(LAYOUT_ROOT) not in sys.path:
     sys.path.insert(0, str(LAYOUT_ROOT))
 
+
+def _prepend_vendor_sys_paths() -> None:
+    """Prepend vendored python packages to ``sys.path`` for host-side tests.
+
+    The --develop CLI sets the container's ``PYTHONPATH`` to ``/carthage``
+    plus each vendor mount's container path (see ``patch_whs.cli``); mirror
+    that here by resolving each entry under ``<project>/vendor`` (symlinks
+    to developer checkouts) and prepending it, so the ``carthage`` and
+    ``entanglement`` imports below pick up the developer's copies.
+    """
+    vendor_dir = PROJECT_ROOT / "vendor"
+    if not vendor_dir.is_dir():
+        return
+    for entry in sorted(vendor_dir.iterdir(), key=lambda p: p.name):
+        if not entry.is_dir():
+            continue
+        path_str = str(entry.resolve())
+        if path_str not in sys.path:
+            sys.path.insert(0, path_str)
+
+
+_prepend_vendor_sys_paths()
+
 CARTHAGE_BASE_ROOT = Path(__file__).resolve().parents[4] / "carthage-base"
 if CARTHAGE_BASE_ROOT.exists() and str(CARTHAGE_BASE_ROOT) not in sys.path:
     sys.path.insert(0, str(CARTHAGE_BASE_ROOT))

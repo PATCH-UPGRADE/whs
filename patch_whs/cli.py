@@ -13,6 +13,22 @@ from typing import Mapping
 DEFAULT_IMAGE = "ghcr.io/patch-upgrade/whs:latest"
 RUN_LABEL = "run_whs"
 DEVELOP_LABEL = "develop_whs"
+# Container directory the develop label bind-mounts ${PWD} over.
+CONTAINER_APP_DIR = "/app"
+# Top-level dir in the image holding the carthage python package; the base
+# image sets PYTHONPATH=/carthage, so a bind mount over /carthage redirects
+# `import carthage` at runtime.
+CONTAINER_CARTHAGE_DIR = "/carthage"
+# Container dir where vendored dev checkouts are bind-mounted for --develop.
+# Deliberately a top-level dir, not /app/vendor: vendor/ may contain
+# symlinks, and you cannot bind mount over a symlink.
+CONTAINER_VENDOR_DIR = "/opt/vendor"
+# The base image's console.service runs /start-carthage.sh, which hard-codes
+# PYTHONPATH=/carthage and would clobber the PYTHONPATH this CLI sets for
+# --develop; when vendoring, overmount it with a dev variant that appends the
+# vendor checkout paths instead.
+DEV_START_SCRIPT = "layout/dev_start_carthage.sh"
+CONTAINER_START_SCRIPT = "/start-carthage.sh"
 PODMAN_REMOTE_STRIP_ARGS = {"--group-add=keep-groups"}
 PODMAN_REMOTE_PLATFORMS = {"darwin", "win32"}
 VARIABLE_PATTERN = re.compile(r"\$(\w+)|\$\{([^}]+)\}")
@@ -109,8 +125,67 @@ def ensure_macvlan_network(nic: str) -> None:
     ])
 
 
+def discover_develop_vendor_mounts(vendor_dir: Path) -> list[tuple[str, str]]:
+    """Return (host_path, container_path) read-only bind mounts for --develop.
+
+    Every directory under ``vendor_dir`` is mounted as a real directory:
+    symlinks mount at their resolved targets, plain directories as-is.
+    ``vendor/carthage`` mounts over ``/carthage``; every other ``vendor/<name>``
+    over ``/opt/vendor/<name>``.
+    """
+    if not vendor_dir.is_dir():
+        return []
+    mounts: list[tuple[str, str]] = []
+    for entry in sorted(vendor_dir.iterdir(), key=lambda p: p.name):
+        if entry.is_symlink() and not entry.exists():
+            print(
+                f"whs: skipping {entry} (dangling symlink)",
+                file=sys.stderr,
+            )
+            continue
+        if not entry.is_dir():
+            continue
+        host = str(entry.resolve()) if entry.is_symlink() else str(entry)
+        container = (
+            CONTAINER_CARTHAGE_DIR
+            if entry.name == "carthage"
+            else f"{CONTAINER_VENDOR_DIR}/{entry.name}"
+        )
+        mounts.append((host, container))
+    return mounts
+
+
 def build_runtime_options(args: argparse.Namespace) -> list[str]:
     options: list[str] = []
+    if args.develop:
+        mounts = discover_develop_vendor_mounts(Path("vendor"))
+        for host, container in mounts:
+            options.extend(["-v", f"{host}:{container}:ro"])
+        if mounts:
+            # The vendored checkouts must be importable inside the container:
+            # set PYTHONPATH to the carthage root plus each checkout's
+            # container path.
+            paths = [CONTAINER_CARTHAGE_DIR]
+            for _, container in mounts:
+                if container not in paths:
+                    paths.append(container)
+            options.extend(["-e", f"PYTHONPATH={os.pathsep.join(paths)}"])
+
+            # Overmount the dev start script over the base image's
+            # /start-carthage.sh: its `export PYTHONPATH=/carthage` would
+            # clobber the value set above before the runner starts.
+            dev_script = Path(DEV_START_SCRIPT)
+            if dev_script.is_file():
+                options.extend(
+                    ["-v", f"{dev_script.resolve()}:{CONTAINER_START_SCRIPT}:ro"]
+                )
+            else:
+                print(
+                    f"whs: warning: {DEV_START_SCRIPT} not found; "
+                    f"vendor PYTHONPATH will not reach the runner",
+                    file=sys.stderr,
+                )
+
     if args.expose_libvirt:
         libvirt_dir = Path(args.expose_libvirt)
         options.extend(["-v", f"{libvirt_dir}:/run/libvirt"])
