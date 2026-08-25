@@ -1,6 +1,6 @@
-import type { SyncManager, SyncRegistry } from "entanglement-core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
+import type { SyncManager, SyncRegistry } from "entanglement-core";
 import { EntanglementProvider } from "entanglement-react";
 import { useEffect, useState } from "react";
 import { AppSidebar } from "./components/features/AppSidebar";

@@ -6,8 +6,10 @@ Object.defineProperty(globalThis, "WebSocket", {
   value: WebSocket,
 });
 
-Object.defineProperty(window, "WebSocket", {
-  configurable: true,
-  writable: true,
-  value: WebSocket,
-});
+if (typeof window !== "undefined") {
+  Object.defineProperty(window, "WebSocket", {
+    configurable: true,
+    writable: true,
+    value: WebSocket,
+  });
+}
