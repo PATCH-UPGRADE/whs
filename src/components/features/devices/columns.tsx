@@ -118,16 +118,44 @@ export const columns: ColumnDef<Device>[] = [
 
       const image = row.original.vm_image;
       if (!image) {
-        return <span className="">Image Field not set</span>;
+        return (
+          <span className="inline-flex rounded-full bg-red-300/30 px-2 py-1 text-sm font-medium text-red-900">
+            Image field not set
+          </span>
+        );
       } else if (image.pending) {
         return (
-          <span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900">
+          <span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-sm font-medium text-amber-900">
             Pending Upload
           </span>
         );
       }
 
-      return <span className="">Uploaded</span>;
+      return (
+        <span className="inline-flex rounded-full bg-green-300/30 px-2 py-1 text-sm font-medium text-green-900">
+          Uploaded
+        </span>
+      );
+    },
+  },
+  {
+    accessorKey: "enabled_for_deployment",
+    meta: { title: "enabled_for_deployment" },
+    header: "Enabled",
+    cell: ({ row }) => {
+      if (!row.original.enabled_for_deployment) {
+        return (
+          <span className="inline-flex rounded-full bg-red-300/30 px-2 py-1 text-sm font-medium text-red-900">
+            Disabled
+          </span>
+        );
+      }
+
+      return (
+        <span className="inline-flex rounded-full bg-green-300/30 px-2 py-1 text-sm font-medium text-green-900">
+          Enabled
+        </span>
+      );
     },
   },
   {
@@ -185,6 +213,7 @@ export const columns: ColumnDef<Device>[] = [
       const deviceForm = useForm<DeviceFormValues>({
         resolver: zodResolver(deviceInputSchema),
         defaultValues: {
+          enabled_for_deployment: data.enabled_for_deployment,
           name: data.name,
           description: data.description ?? "",
           type: data.type,

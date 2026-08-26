@@ -158,10 +158,14 @@ async def run_deployment(request:Request, layout:layout_dependency):
     async def deployment_task():
         async with state.deployment_lock:
             ainjector = layout.ainjector
+            deployable_filter = deployment.deployable_name_filter(
+                include=os.environ.get('CARTHAGE_DEPLOY_INCLUDE', '').split(),
+                exclude=os.environ.get('CARTHAGE_DEPLOY_EXCLUDE', '').split(),
+            )
             state.deployables = await ainjector(
                 deployment.find_deployables)
             state.deployment_result = await ainjector(
-                deployment.run_deployment, deployables=state.deployables)
+                deployment.run_deployment, deployables=state.deployables, filter=deployable_filter)
             
     state = request.app.state
     if state.deployment_lock.locked():

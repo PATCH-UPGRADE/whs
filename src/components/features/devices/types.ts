@@ -31,6 +31,7 @@ export const DEVICE_ARCHITECTURE_TYPE_TO_DISPLAY_TEXT = {
 
 export const deviceInputSchema = z
   .object({
+    enabled_for_deployment: z.boolean(),
     name: z.string().min(3),
     description: z.string(),
     type: z.enum(DeviceType),
@@ -64,6 +65,7 @@ export const deviceInputSchema = z
 
 export const deviceOutputSchema = z.object({
   id: z.string(),
+  enabled_for_deployment: z.boolean(),
   name: z.string().min(3),
   description: z.string(),
   type: z.enum(DeviceType),
