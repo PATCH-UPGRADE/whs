@@ -158,10 +158,14 @@ async def run_deployment(request:Request, layout:layout_dependency):
     async def deployment_task():
         async with state.deployment_lock:
             ainjector = layout.ainjector
+            deployable_filter = deployment.deployable_name_filter(
+                include=os.environ.get('CARTHAGE_DEPLOY_INCLUDE', '').split(),
+                exclude=os.environ.get('CARTHAGE_DEPLOY_EXCLUDE', '').split(),
+            )
             state.deployables = await ainjector(
                 deployment.find_deployables)
             state.deployment_result = await ainjector(
-                deployment.run_deployment, deployables=state.deployables)
+                deployment.run_deployment, deployables=state.deployables, filter=deployable_filter)
             
     state = request.app.state
     if state.deployment_lock.locked():
@@ -527,6 +531,11 @@ async def serial_websocket_proxy(
     print("Serial console session closed")
 
 api_v1.add_api_websocket_route('/entanglement', entanglement.entanglement_websocket)
+
+# Capture any previously unmatched requests and return a 404
+@api_v1.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE"], include_in_schema=False)
+async def api_v1_not_found(full_path: str):
+    raise HTTPException(status_code=404, detail=f"Not Found: /api/v1/{full_path}")
 
 @inject(
     layout=InjectionKey(CarthageLayout, _ready=False),
