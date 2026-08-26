@@ -63,6 +63,7 @@ export class Device extends PersistentSynchronizable {
 
   // Core fields
   name!: string;
+  enabled_for_deployment!: boolean;
   type!: "vm" | "container" | "bareMetal";
   cloud_init!: boolean;
   dhcp!: boolean;
