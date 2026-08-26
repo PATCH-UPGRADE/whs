@@ -1,6 +1,7 @@
 tester01:
   name: tester01
   description: Test device information
+  enabled_for_deployment: true
   type: vm
   cloud_init: true
   architecture: aarch64
@@ -18,6 +19,7 @@ tester01:
 tester02:
   name: tester02
   description: tester02
+  enabled_for_deployment: true
   type: container
   cloud_init: false
   architecture: aarch64
