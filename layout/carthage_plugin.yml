@@ -13,3 +13,4 @@ config:
     - carthage.libvirt
     - carthage.podman
     - https://github.com/hadron/carthage-base
+    - carthage.entanglement

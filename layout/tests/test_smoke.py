@@ -16,6 +16,42 @@ def test_model_store_is_seeded(model_store):
     assert "sdr_img" in model_store.vm_images
 
 
+def test_whs_network_model_synchronizes_into_registry(injector, loop, entanglement):
+    # A minimal layout carrying just a WhsNetworkModel is enough to exercise the
+    # carthage entanglement instrumentation: instantiating the layout and
+    # resolving its networking produces the network model, which fires the
+    # instrumentation callback and stores a WhsEntangledNetwork in the registry.
+    # (The full whs layout is not used here because bringing it to ready cascades
+    # into machine/podman instantiation, which is outside a smoke test's scope.)
+    from carthage.dependency_injection import InjectionKey
+    from carthage.modeling import CarthageLayout, provides
+    from carthage.network import V4Config
+    from python.dynamic_models import WhsNetworkModel, WhsEntangledNetwork
+
+    class whs_layout(CarthageLayout):
+        layout_name = "whs"
+        domain = "whs.local"
+
+        @provides('bridge_net')
+        class net(WhsNetworkModel):
+            v4_config = V4Config(
+                network='10.20.100.0/24',
+                dhcp=False,
+                pool=('10.20.100.10', '10.20.100.200'),
+                gateway='10.20.100.1',
+            )
+
+    layout = whs_layout(injector=injector)
+    net = layout.injector.get_instance(InjectionKey('bridge_net'))
+    loop.run_until_complete(layout.resolve_networking())
+
+    synced = entanglement.synchronized(WhsEntangledNetwork, "net")
+    assert isinstance(synced, WhsEntangledNetwork)
+    assert synced.name == "net"
+    assert synced.network == "10.20.100.0/24"
+    assert synced.injector_id == id(net.injector)
+
+
 def test_app_reads_seeded_devices(app, model_store, state_dir: Path):
     client = TestClient(app)
 
