@@ -64,6 +64,7 @@ function register_schema(registry) {
       "id",
       "name",
       "description",
+      "enabled_for_deployment",
       "type",
       "cloud_init",
       "architecture",
