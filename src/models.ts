@@ -15,7 +15,7 @@
 import {
   PersistentSynchronizable,
   relationship,
-} from "entanglement-core/persistence";
+} from "entanglement-core/persistence.js";
 
 // ============================================================================
 // VmImage Model
@@ -121,3 +121,26 @@ relationship(ContainerImage, Device, {
   use_list: true, // One image referenced by many containers
   debug: false,
 });
+
+// ============================================================================
+// WhsEntangledNetwork Model
+// ============================================================================
+
+/**
+ * A WHS network as synchronized from the carthage entanglement registry.
+ *
+ * Produced server-side by the carthage entanglement instrumentation whenever
+ * a WhsNetworkModel is instantiated by a layout (see
+ * layout/python/dynamic_models.py).  Belongs to the carthage.entanglement
+ * schema rather than whs_models.
+ */
+export class WhsEntangledNetwork extends PersistentSynchronizable {
+  // Primary key (set by backend schema registration)
+  name!: string;
+
+  // Core fields (populated from syncReceive messages)
+  // The network and netmask in CIDR notation
+  network!: string;
+  // id of the injector that produced the WhsNetworkModel
+  injector_id!: number;
+}
