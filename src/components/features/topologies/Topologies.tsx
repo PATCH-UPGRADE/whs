@@ -231,7 +231,7 @@ export const DeployTopologyContainer = () => {
             </div>
           ))}
 
-        {STATUSES.slice(1).map((statusType, si) => (
+        {STATUSES.slice(1, 4).map((statusType, si) => (
           <React.Fragment key={si}>
             {filters[si + 1] &&
               deploymentStatus?.[statusType.value].map((message, mi) => (
@@ -257,6 +257,32 @@ export const DeployTopologyContainer = () => {
               ))}
           </React.Fragment>
         ))}
+
+        {filters[4] &&
+          deploymentStatus?.ignored.map((message, mi) => (
+            <div
+              key={mi}
+              className={cn(
+                "px-4 py-2 border-l-6",
+                STATUSES[4].bgColor,
+                STATUSES[4].borderColor,
+              )}
+            >
+              <div
+                className={cn(
+                  "flex self-end gap-2 font-semibold pb-1",
+                  STATUSES[4].textColor,
+                )}
+              >
+                <Equal />
+                {STATUSES[4].header}
+              </div>
+              <div className="flex gap-2">
+                <span className="font-semibold">{message.name}</span>
+                <span className="">(ID: {message.id})</span>
+              </div>
+            </div>
+          ))}
       </div>
     </div>
   );
