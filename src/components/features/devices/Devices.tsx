@@ -37,6 +37,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -187,13 +188,14 @@ export const DeviceCreateUpdateModal = ({
                           >
                             <FormControl>
                               <RadioGroupItem
+                                id={`device-type-${type}`}
                                 value={type}
                                 className="rounded-lg border-2 border-primary hover:border-primary/50"
                               />
                             </FormControl>
-                            <FormLabel htmlFor={type}>
+                            <Label htmlFor={`device-type-${type}`}>
                               {DEVICE_TYPE_TO_DISPLAY_TEXT[type]}
-                            </FormLabel>
+                            </Label>
                           </FormItem>
                         ))}
                       </RadioGroup>
@@ -292,13 +294,14 @@ export const DeviceCreateUpdateModal = ({
                             >
                               <FormControl>
                                 <RadioGroupItem
+                                  id={`device-architecture-${type}`}
                                   value={type}
                                   className="rounded-lg border-2 border-primary hover:border-primary/50"
                                 />
                               </FormControl>
-                              <FormLabel htmlFor={type}>
+                              <Label htmlFor={`device-architecture-${type}`}>
                                 {DEVICE_ARCHITECTURE_TYPE_TO_DISPLAY_TEXT[type]}
-                              </FormLabel>
+                              </Label>
                             </FormItem>
                           ))}
                         </RadioGroup>
@@ -466,11 +469,14 @@ export const DeviceCreateUpdateModal = ({
                                 >
                                   <FormControl>
                                     <RadioGroupItem
+                                      id={`disk-controller-${type}`}
                                       value={type}
                                       className="rounded-lg border-2 border-primary hover:border-primary/50"
                                     />
                                   </FormControl>
-                                  <FormLabel htmlFor={type}>{type}</FormLabel>
+                                  <Label htmlFor={`disk-controller-${type}`}>
+                                    {type}
+                                  </Label>
                                 </FormItem>
                               ),
                             )}
