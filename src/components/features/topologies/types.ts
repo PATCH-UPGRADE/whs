@@ -10,7 +10,12 @@ export const typologyResponseSchema = z.object({});
 
 export const topologyStatusResponseSchema = z.object({
   running: z.boolean(),
-  successes: z.array(z.string()),
+  successes: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+    }),
+  ),
   failures: z.array(z.string()),
   dependency_failures: z.array(z.string()),
   ignored: z.array(z.string()),
