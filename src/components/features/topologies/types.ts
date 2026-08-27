@@ -18,7 +18,12 @@ export const topologyStatusResponseSchema = z.object({
   ),
   failures: z.array(z.string()),
   dependency_failures: z.array(z.string()),
-  ignored: z.array(z.string()),
+  ignored: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+    }),
+  ),
   orphans: z.array(z.string()),
 });
 
