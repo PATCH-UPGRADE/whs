@@ -56,6 +56,10 @@ jobs:
   run-npm-tests:
     name: Run npm tests
     runs-on: ubuntu-latest
+    needs:
+      - build-and-lint
+    env:
+      VITE_CARTHAGE_API_URL: http://127.0.0.1:8080/
 
     steps:
       - uses: actions/checkout@v6
@@ -68,6 +72,18 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - uses: ./.github/actions/container-build
+        with:
+          image_tag: whs:test
+
+      - name: Start the branch WHS image
+        run: podman run --detach --tty --privileged --publish 8080:8080 --name whs-test whs:test
+
+      - name: Wait for the WHS API
+        run: |
+          timeout 120s bash -c \
+            'until curl --fail --silent http://127.0.0.1:8080/api/v1/devices >/dev/null; do sleep 2; done'
 
       - name: Run tests
         run: npm run test
@@ -86,7 +102,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Install prerequisites
-        run: apt update && apt install -y qemu-system-arm qemu-efi-aarch64 python3-pytest python3-fastapi python3-libvirt iproute2 iptables procps
+        run: apt update && apt install -y qemu-system-arm qemu-efi-aarch64 python3-pytest python3-fastapi python3-libvirt python3-pip iproute2 iptables procps && python3 -m pip install git+https://github.com/hadron/entanglement@master --ignore-installed --break-system-packages
       - name: Run libvirt/qemu as root # Avoids libvirt-qemu pytest directory permission issues
         run: |
           sed -i 's/#user = "root"/user = "root"/' /etc/libvirt/qemu.conf 

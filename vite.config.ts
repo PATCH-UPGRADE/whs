@@ -16,6 +16,11 @@ export default defineConfig({
   },
   test: {
     setupFiles: ["./src/tests/setup-websocket.ts"],
+    server: {
+      deps: {
+        inline: ["entanglement-react"],
+      },
+    },
   },
   server: {
     cors: {
