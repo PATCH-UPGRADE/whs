@@ -1,12 +1,18 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
   flexRender,
   getCoreRowModel,
+  type Row,
   useReactTable,
 } from "@tanstack/react-table";
-import { useEntangledList } from "entanglement-react";
+import { SyncOwner } from "entanglement-core/persistence";
+import {
+  useEntangledList,
+  useEntangledObject,
+  useEntangledValue,
+  useEntanglementManager,
+} from "entanglement-react";
 import { PlusIcon, SlashIcon } from "lucide-react";
 import { useState } from "react";
 import { type UseFormReturn, useForm, useWatch } from "react-hook-form";
@@ -48,10 +54,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Device } from "@/models";
-import { getImages } from "../images/hooks";
+import { Device, VmImage } from "@/models";
 import { columns } from "./columns";
-import { useCreateDevice } from "./hooks";
 import {
   DEVICE_ARCHITECTURE_TYPE_TO_DISPLAY_TEXT,
   DEVICE_TYPE_TO_DISPLAY_TEXT,
@@ -77,21 +81,15 @@ export const DeviceCreateUpdateModal = ({
   setOpen: (open: boolean) => void;
   isUpdate?: boolean;
 }) => {
-  const {
-    data: images,
-    // isPending,
-    // isError,
-    // error,
-  } = useQuery({
-    queryKey: ["images"],
-    queryFn: getImages,
-  });
+  const images = useEntangledList(VmImage);
 
   const onSubmit = (values: DeviceFormValues) => {
     handleCreate(values);
   };
 
-  console.log("form:", form.getValues());
+  if (isUpdate) {
+    console.log("form:", form.getValues());
+  }
 
   const isFormPending = form.formState.isSubmitting;
   const verbLabel = isUpdate ? "Update" : "Create";
@@ -651,9 +649,9 @@ export const DeviceCreateUpdateModal = ({
 };
 
 export const DevicesContainer = () => {
+  const syncManager = useEntanglementManager();
   const devices = useEntangledList(Device);
 
-  const createDevice = useCreateDevice();
   const [open, setOpen] = useState(false);
 
   const form = useForm<DeviceFormValues>({
@@ -679,23 +677,26 @@ export const DevicesContainer = () => {
       dns_servers: [],
     },
   });
-  console.log(form.getValues().enabled_for_deployment);
 
-  const handleCreate = (item: DeviceFormValues) => {
+  const handleCreate = async (item: DeviceFormValues) => {
     // handle edge case where user sets container to native then flips back to a VM
     if (item.architecture === "native" && item.type === "vm") {
       item.architecture = "x86_64";
     }
 
-    createDevice.mutate(item, {
-      onSuccess: () => {
-        form.reset();
-        setOpen(false);
-      },
-      onError: () => {
-        setOpen(true);
-      },
-    });
+    const owner = [...SyncOwner.syncStorageMap.values()][0];
+    const newDevice = new Device();
+    Object.assign(newDevice, item, { _sync_owner: owner });
+
+    try {
+      const created = await newDevice.syncCreate(syncManager);
+      form.reset();
+      setOpen(false);
+      console.log("created device:", created);
+    } catch (e: unknown) {
+      setOpen(true);
+      console.log("error creating device:", e);
+    }
   };
 
   return (
@@ -730,15 +731,49 @@ export const DevicesContainer = () => {
   );
 };
 
-interface DevicesListI {
+interface DeviceRowProps {
+  row: Row<Device>;
+}
+
+function DeviceRow({ row }: DeviceRowProps) {
+  const navigate = useNavigate();
+
+  const device = useEntangledObject(row.original);
+  const image = useEntangledValue(
+    device,
+    (d) => d.vm_image ?? d.container_image,
+  );
+  console.log("image:", image);
+
+  return (
+    <tr
+      onClick={() =>
+        navigate({
+          to: "/devices/$deviceId",
+          params: { deviceId: device?.id ?? row.original.id },
+        })
+      }
+      className="odd:bg-white even:bg-blue-50 cursor-pointer transition-colors hover:bg-gray-200 text-md"
+    >
+      {row.getVisibleCells().map((cell) => (
+        <td
+          key={cell.id}
+          className="max-w-[125px] truncate px-4 py-3 text-gray-700"
+        >
+          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+interface DevicesListProps {
   devices: readonly Device[];
 }
 
-const DevicesList = ({ devices }: DevicesListI) => {
-  const navigate = useNavigate();
-
+const DevicesList = ({ devices }: DevicesListProps) => {
   const table = useReactTable({
-    data: devices as Device[], // useReactTable doesn't support readonly typeq
+    data: devices as Device[], // useReactTable doesn't support readonly type
     columns: columns,
     getCoreRowModel: getCoreRowModel(),
   });
@@ -747,11 +782,11 @@ const DevicesList = ({ devices }: DevicesListI) => {
     <div className="overflow-x-auto rounded border border-gray-300">
       <table className="w-full text-left text-sm">
         <thead className="bg-blue-200">
-          {table.getHeaderGroups().map((headerGroup, index) => (
-            <tr key={index}>
-              {headerGroup.headers.map((header, index) => (
+          {table.getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id}>
+              {headerGroup.headers.map((header) => (
                 <th
-                  key={index}
+                  key={header.id}
                   className="border-b border-gray-200 px-4 py-3 font-bold uppercase text-md tracking-wide"
                 >
                   {header.isPlaceholder
@@ -766,26 +801,8 @@ const DevicesList = ({ devices }: DevicesListI) => {
           ))}
         </thead>
         <tbody className="divide-y divide-gray-100">
-          {table.getRowModel().rows.map((row, index) => (
-            <tr
-              key={index}
-              onClick={() =>
-                navigate({
-                  to: "/devices/$deviceId",
-                  params: { deviceId: row.original.id },
-                })
-              }
-              className="odd:bg-white even:bg-blue-50 cursor-pointer transition-colors hover:bg-gray-200 text-md"
-            >
-              {row.getVisibleCells().map((cell, index) => (
-                <td
-                  key={index}
-                  className="max-w-[125px] truncate px-4 py-3 text-gray-700"
-                >
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
+          {table.getRowModel().rows.map((row) => (
+            <DeviceRow key={row.id} row={row} />
           ))}
         </tbody>
       </table>

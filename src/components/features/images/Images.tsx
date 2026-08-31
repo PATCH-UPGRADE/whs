@@ -38,8 +38,8 @@ import { Input } from "@/components/ui/input";
 import { getImageColumns } from "./columns";
 import { getImages, useUploadImage } from "./hooks";
 import {
-  type Image,
-  type ImageUploadFormValues,
+  type DeviceImage,
+  type DeviceImageUploadFormValues,
   imageUploadInputSchema,
 } from "./types";
 
@@ -50,14 +50,14 @@ export const ImageUploadModal = ({
   pendingImage,
   setOpen,
 }: {
-  form: UseFormReturn<ImageUploadFormValues>;
-  handleCreate: (values: ImageUploadFormValues) => void;
+  form: UseFormReturn<DeviceImageUploadFormValues>;
+  handleCreate: (values: DeviceImageUploadFormValues) => void;
   open: boolean;
-  pendingImage?: Image | null;
+  pendingImage?: DeviceImage | null;
   setOpen: (open: boolean) => void;
   isUpdate?: boolean;
 }) => {
-  const onSubmit = (values: ImageUploadFormValues) => {
+  const onSubmit = (values: DeviceImageUploadFormValues) => {
     handleCreate(values);
   };
 
@@ -189,9 +189,9 @@ export const ImagesContainer = () => {
 
   const uploadImage = useUploadImage();
   const [open, setOpen] = useState(false);
-  const [pendingImage, setPendingImage] = useState<Image | null>(null);
+  const [pendingImage, setPendingImage] = useState<DeviceImage | null>(null);
 
-  const form = useForm<ImageUploadFormValues>({
+  const form = useForm<DeviceImageUploadFormValues>({
     resolver: zodResolver(imageUploadInputSchema),
     defaultValues: {
       file: undefined,
@@ -220,7 +220,7 @@ export const ImagesContainer = () => {
     }
   }, [form, open, pendingImage]);
 
-  const handleCreate = (item: ImageUploadFormValues) => {
+  const handleCreate = (item: DeviceImageUploadFormValues) => {
     // repack data as FormData so the browser auto sets the header to
     // Content-Type: multipart/form-data. the browser has to do it itself
     const formData = new FormData();
@@ -243,7 +243,7 @@ export const ImagesContainer = () => {
     setOpen(true);
   };
 
-  const handleOpenPendingUpload = (image: Image) => {
+  const handleOpenPendingUpload = (image: DeviceImage) => {
     setPendingImage(image);
     setOpen(true);
   };
@@ -299,8 +299,8 @@ const ImagesError = () => {
 };
 
 interface ImagesListI {
-  images: Image[];
-  onUploadPending: (image: Image) => void;
+  images: DeviceImage[];
+  onUploadPending: (image: DeviceImage) => void;
 }
 
 const ImagesList = ({ images, onUploadPending }: ImagesListI) => {

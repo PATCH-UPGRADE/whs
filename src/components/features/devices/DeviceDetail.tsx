@@ -1,5 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
+import {
+  useEntangledList,
+  useEntangledObject,
+  useEntangledValue,
+} from "entanglement-react";
 import { Braces, ScreenShare, SlashIcon, SquareTerminal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -13,7 +17,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { getDevice } from "./hooks";
+import { Device } from "@/models";
 import SerialConnection from "./SerialConnection";
 import { DeviceType } from "./types";
 import VncConnection from "./VncConnection";
@@ -38,6 +42,10 @@ const TABS = [
 
 export const DeviceDetail = () => {
   const { deviceId } = useParams({ from: "/devices/$deviceId" });
+  const devices = useEntangledList(Device);
+  const readonlyDevice = devices.find((d) => d.id === deviceId);
+  const device = useEntangledObject(readonlyDevice);
+  const image = useEntangledValue(device, (d) => d.vm_image);
 
   const [currentTab, setCurrentTab] = useState(TABS[0].value);
   const [vncStarted, setVncStarted] = useState(false);
@@ -45,16 +53,6 @@ export const DeviceDetail = () => {
 
   const vncConnectionRef = useRef<VncConnection>(null);
   const serialConnectionRef = useRef<SerialConnection>(null);
-
-  const {
-    data: deviceData,
-    isPending,
-    isError,
-    error,
-  } = useQuery({
-    queryKey: ["devices", deviceId],
-    queryFn: () => getDevice(deviceId),
-  });
 
   const onClickVncStart = () => {
     if (vncConnectionRef.current) {
@@ -86,19 +84,11 @@ export const DeviceDetail = () => {
     };
   }, []);
 
-  if (isPending) {
-    return <div>Fetching Device...</div>;
-  }
-
-  if (isError) {
-    console.log(error);
+  if (!device) {
     return <div>Device not found!</div>;
   }
 
-  const isImagePending =
-    (deviceData.type === DeviceType.vm && deviceData.vm_image?.pending) ||
-    (deviceData.type === DeviceType.container &&
-      deviceData.container_image?.pending);
+  const isVmImagePending = device.type === DeviceType.vm && image?.pending;
 
   return (
     <div className="flex flex-col w-auto">
@@ -118,8 +108,8 @@ export const DeviceDetail = () => {
 
       <div className="flex flex-col mt-3">
         <div className="text-xl">
-          <span className="font-bold">Device Name:</span> {deviceData.name}
-          {isImagePending && (
+          <span className="font-bold">Device Name:</span> {device.name}
+          {isVmImagePending && (
             <a href={"/images"}>
               <span className="inline-flex rounded-full bg-amber-100 ml-2 px-2 py-1 text-xs font-medium text-amber-900">
                 Pending image upload
@@ -128,8 +118,7 @@ export const DeviceDetail = () => {
           )}
         </div>
         <div className="text-md text-neutral-900">
-          <span className="font-bold">Description:</span>{" "}
-          {deviceData.description}
+          <span className="font-bold">Description:</span> {device.description}
         </div>
       </div>
 
@@ -156,9 +145,7 @@ export const DeviceDetail = () => {
         <div className="w-full">
           <TabsContent value="inspect">
             <pre className="w-full p-4 overflow-x-auto text-md font-mono rounded bg-zinc-100 text-zinc-800 border border-zinc-200">
-              <code className="w-auto">
-                {JSON.stringify(deviceData, null, 2)}
-              </code>
+              <code className="w-auto">{JSON.stringify(device, null, 2)}</code>
             </pre>
             <span className="text-red-700">
               * not all fields shown are relevant to a given device e.g.
@@ -182,8 +169,8 @@ export const DeviceDetail = () => {
             <div id="vncStatus">Status: Not Connected</div> */}
 
             <VncConnectBanner
-              deviceType={deviceData.type}
-              hasGraphics={deviceData.display}
+              deviceType={device.type}
+              hasGraphics={device.display ?? false}
               vncStarted={vncStarted}
               onClickVncStart={onClickVncStart}
             />
@@ -207,7 +194,7 @@ export const DeviceDetail = () => {
             }
           >
             <SerialConnectBanner
-              deviceType={deviceData.type}
+              deviceType={device.type}
               serialStarted={serialStarted}
               onClickSerialStart={onClickSerialStart}
             />

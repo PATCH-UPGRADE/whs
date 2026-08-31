@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { imageOutputSchema } from "../images/types";
 
 export const DeviceArchitectureType = {
   x86_64: "x86_64",
@@ -77,9 +78,9 @@ export const deviceOutputSchema = z.object({
   disk_controller: z.enum(DiskControllerType),
   display: z.boolean(),
   vm_image_id: z.string().nullish(),
-  vm_image: z.object(Image).nullish(),
+  vm_image: z.object(imageOutputSchema).nullish(),
   container_image_id: z.string().nullish(),
-  container_image: z.object(Image).nullish(),
+  container_image: z.object(imageOutputSchema).nullish(),
   dhcp: z.boolean(),
   mac_address: z.string().optional(),
   ipv4_manual: z.string().optional(),

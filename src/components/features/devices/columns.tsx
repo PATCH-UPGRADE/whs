@@ -1,12 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ColumnDef } from "@tanstack/react-table";
+import { useEntangledValue, useEntanglementManager } from "entanglement-react";
 import { SquarePen, TrashIcon } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import type { Device } from "@/models";
 import { DeviceCreateUpdateModal } from "./Devices";
-import { useDeleteDevice, useUpdateDevice } from "./hooks";
 import {
   DEVICE_TYPE_TO_DISPLAY_TEXT,
   type DeviceFormValues,
@@ -163,123 +163,69 @@ export const columns: ColumnDef<Device>[] = [
     enableHiding: false,
     header: "Actions",
     cell: ({ row }) => {
-      const data = row.original;
+      const device = row.original;
 
-      const deleteDevice = useDeleteDevice();
-      const updateDevice = useUpdateDevice();
-      // const uploadImage = useUploadImage();
-
-      const handleRemove = () => {
-        deleteDevice.mutate({ id: data.id });
-      };
-
-      const handleDeviceUpdate = (item: DeviceFormValues) => {
-        updateDevice.mutate(
-          { id: data.id, updateDevice: item },
-          {
-            onSuccess: () => {
-              deviceForm.reset();
-              setEditModalOpen(false);
-            },
-            onError: () => {
-              setEditModalOpen(true);
-            },
-          },
-        );
-      };
-
-      // const handleUploadImage = (item: ImageUploadFormValues) => {
-      //   // repack data as FormData so the browser auto sets the header to
-      //   // Content-Type: multipart/form-data. the browser has to do it itself
-      //   const formData = new FormData();
-      //   formData.append("file", item.file);
-      //   formData.append("description", item.description);
-      //   formData.append("version", item.version);
-
-      //   uploadImage.mutate(formData, {
-      //     onSuccess: () => {
-      //       setUploadImageModalOpen(false);
-      //     },
-      //     onError: () => {
-      //       setUploadImageModalOpen(true);
-      //     },
-      //   });
-      // };
-
+      const syncManager = useEntanglementManager();
+      const image = useEntangledValue(
+        device,
+        (d) => d.vm_image ?? d.container_image,
+      );
       const [editModalOpen, setEditModalOpen] = useState(false);
-      // const [pendingImage, _setPendingImage] = useState<null>(null);
-      // const [uploadImageModalOpen, setUploadImageModalOpen] = useState(false);
 
       const deviceForm = useForm<DeviceFormValues>({
         resolver: zodResolver(deviceInputSchema),
         defaultValues: {
-          enabled_for_deployment: data.enabled_for_deployment,
-          name: data.name,
-          description: data.description ?? "",
-          type: data.type,
-          architecture: data.architecture ?? undefined,
-          cloud_init: data.cloud_init,
-          cpus: data.cpus,
-          memory: data.memory,
-          disk: data.disk,
-          disk_controller: data.disk_controller ?? undefined,
-          display: data.display,
-          vm_image_id: data.vm_image_id,
-          container_image_id:
-            data.container_image?.name ?? data.container_image_id,
-          dhcp: data.dhcp,
-          mac_address: data.mac_address ?? undefined,
-          ipv4_manual: data.ipv4_manual ?? undefined,
-          gateway: data.gateway ?? undefined,
-          dns_servers: data.dns_servers,
+          enabled_for_deployment: device.enabled_for_deployment,
+          name: device.name,
+          description: device.description ?? "",
+          type: device.type,
+          architecture: device.architecture ?? undefined,
+          cloud_init: device.cloud_init,
+          cpus: device.cpus,
+          memory: device.memory,
+          disk: device.disk,
+          disk_controller: device.disk_controller ?? undefined,
+          display: device.display,
+          vm_image_id: device.vm_image_id,
+          container_image_id: image?.name ?? device.container_image_id,
+          dhcp: device.dhcp,
+          mac_address: device.mac_address ?? undefined,
+          ipv4_manual: device.ipv4_manual ?? undefined,
+          gateway: device.gateway ?? undefined,
+          dns_servers: device.dns_servers,
         },
       });
 
-      // const uploadImageForm = useForm<ImageUploadFormValues>({
-      //   resolver: zodResolver(imageUploadInputSchema),
-      //   defaultValues: {
-      //     file: undefined,
-      //     description: "",
-      //     version: "",
-      //   },
-      // });
+      const handleRemove = () => {
+        device.syncDelete(syncManager);
+      };
+
+      const handleDeviceUpdate = (item: DeviceFormValues) => {
+        Object.assign(device, item);
+
+        try {
+          device.syncUpdate(syncManager);
+          deviceForm.reset();
+          setEditModalOpen(false);
+          console.log("updated device:", device);
+        } catch (e: unknown) {
+          setEditModalOpen(true);
+          console.log("failed to update device:", e, device);
+        }
+      };
 
       return (
         <div className="flex justify-between">
           <div className="flex">
-            {/* {data.vm_image?.pending ||
-            (data.container_image?.pending && (
-              <>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setUploadImageModalOpen(true);
-                  }}
-                >
-                  Upload
-                </Button>
-                <ImageUploadModal
-                  form={uploadImageForm}
-                  open={uploadImageModalOpen}
-                  pendingImage={pendingImage}
-                  setOpen={setUploadImageModalOpen}
-                  handleCreate={handleUploadImage}
-                />
-              </>
-            ))
-          } */}
             <Button
               className=""
               onClick={(e) => {
                 e.stopPropagation();
                 setEditModalOpen(true);
               }}
-              disabled={updateDevice.isPending}
             >
               <SquarePen />
-              {updateDevice.isPending ? "Updating..." : "Update"}
+              Update
             </Button>
           </div>
 
@@ -289,7 +235,6 @@ export const columns: ColumnDef<Device>[] = [
               e.stopPropagation();
               handleRemove();
             }}
-            disabled={deleteDevice.isPending}
             variant="destructive"
           >
             <TrashIcon />
