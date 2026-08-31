@@ -9,6 +9,7 @@ from entanglement.pydantic import SynchronizableBaseModel, PydanticSyncStoreRegi
 from entanglement.javascript_schema import javascript_registry
 from entanglement.memory import StoreInSyncStoreMixin, SyncStore, SyncOwner
 from entanglement.interface import register_synchronizables
+from carthage.entanglement import carthage_registry
 ''' Models representing objects that have been statically added to a
 topology layout in the WHS. These are things that ultimately come from
 the API users.
@@ -233,6 +234,13 @@ class ModelStore(PydanticSyncStoreRegistry):
 
 register_synchronizables(ModelStore, SyncOwner)
 javascript_registry(ModelStore, 'whs_models')
+
+# The carthage entanglement registry carries carthage's own models
+# (InjectorInfo, ProviderInfo, TaskInfo, ...) as well as the WHS-specific
+# WhsEntangledNetwork produced by the WhsNetworkModel instrumentation.
+# Register it for javascript schema output so the frontend can construct
+# objects of those types.
+javascript_registry(carthage_registry, 'carthage_entanglement')
 
     
 __all__ = [

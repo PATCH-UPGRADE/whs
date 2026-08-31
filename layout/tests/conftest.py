@@ -19,23 +19,33 @@ LAYOUT_ROOT = PROJECT_ROOT / "layout"
 if str(LAYOUT_ROOT) not in sys.path:
     sys.path.insert(0, str(LAYOUT_ROOT))
 
-CARTHAGE_BASE_ROOT = Path(__file__).resolve().parents[4] / "carthage-base"
-if CARTHAGE_BASE_ROOT.exists() and str(CARTHAGE_BASE_ROOT) not in sys.path:
-    sys.path.insert(0, str(CARTHAGE_BASE_ROOT))
+
+def _prepend_vendor_sys_paths() -> None:
+    """Prepend vendored python packages to ``sys.path`` for host-side tests.
+
+    The --develop CLI sets the container's ``PYTHONPATH`` to ``/carthage``
+    plus each vendor mount's container path (see ``patch_whs.cli``); mirror
+    that here by resolving each entry under ``<project>/vendor`` (symlinks
+    to developer checkouts) and prepending it, so the ``carthage`` and
+    ``entanglement`` imports below pick up the developer's copies.
+    """
+    vendor_dir = PROJECT_ROOT / "vendor"
+    if not vendor_dir.is_dir():
+        return
+    for entry in sorted(vendor_dir.iterdir(), key=lambda p: p.name):
+        if not entry.is_dir():
+            continue
+        path_str = str(entry.resolve())
+        if path_str not in sys.path:
+            sys.path.insert(0, path_str)
+
+
+_prepend_vendor_sys_paths()
 
 from carthage import AsyncInjector, ConfigLayout, base_injector, shutdown_injector
 from carthage.dependency_injection import InjectionKey, dependency_quote
 from carthage.modeling import CarthageLayout
-from carthage.plugins import CarthagePlugin, PluginMappings, load_plugin
-
-if CARTHAGE_BASE_ROOT.exists():
-    base_injector(PluginMappings).add_mapping(
-        {
-            "map": "https://github.com/hadron/carthage-base",
-            "to": str(CARTHAGE_BASE_ROOT),
-            "stop": True,
-        }
-    )
+from carthage.plugins import CarthagePlugin, load_plugin
 
 base_injector(load_plugin, LAYOUT_ROOT)
 
@@ -44,6 +54,7 @@ plugin_package_name = layout_plugin.package.__name__
 layout_module = importlib.import_module(f"{plugin_package_name}.layout")
 models_module = importlib.import_module(f"{plugin_package_name}.models")
 web_backend = importlib.import_module(f"{plugin_package_name}.web_backend")
+dynamic_models = importlib.import_module(f"{plugin_package_name}.dynamic_models")
 ModelStore = models_module.ModelStore
 web_app_key = web_backend.web_app_key
 web_server_key = web_backend.web_server_key
@@ -51,6 +62,7 @@ web_server_key = web_backend.web_server_key
 sys.modules.setdefault("python.layout", layout_module)
 sys.modules.setdefault("python.models", models_module)
 sys.modules.setdefault("python.web_backend", web_backend)
+sys.modules.setdefault("python.dynamic_models", dynamic_models)
 
 @pytest.fixture(scope="session")
 def loop():
@@ -108,6 +120,45 @@ def ainjector(injector, loop):
 @pytest.fixture
 def model_store(injector) -> ModelStore:
     return injector.get_instance(InjectionKey(ModelStore))
+
+
+@pytest.fixture
+def entanglement():
+    """Expose what has been synchronized into the carthage entanglement registry.
+
+    ``carthage.entanglement`` is loaded as a plugin at conftest import time
+    (see ``carthage_plugin.yml``), which instruments the base injector and
+    populates the module-level :data:`carthage_registry` as models are
+    instantiated. This fixture wraps that registry so a test can query what has
+    been synchronized for a given class/primary key without standing up a server.
+    """
+    from carthage.entanglement import carthage_registry
+
+    class _Entanglement:
+        def store(self, cls):
+            """The :class:`~entanglement.memory.AbstractSyncStore` for *cls*."""
+            return carthage_registry.store_for_class(cls)
+
+        def all(self, cls):
+            """All synchronized objects of type *cls* (its store's values)."""
+            return list(carthage_registry.store_for_class(cls).values())
+
+        def synchronized(self, cls, *keys):
+            """Look up the synchronized object of type *cls* with primary key *keys*.
+
+            Looks up the SyncStore for *cls*, computes the key from its
+            ``sync_primary_keys``, and returns the stored object, or ``None`` if
+            nothing was synchronized for that key. Works for any class in the
+            registry, not just networks.
+            """
+            store = carthage_registry.store_for_class(cls)
+            key = keys[0] if len(keys) == 1 else tuple(keys)
+            try:
+                return store[key]
+            except KeyError:
+                return None
+
+    return _Entanglement()
 
 
 @pytest.fixture

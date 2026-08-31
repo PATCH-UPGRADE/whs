@@ -2,6 +2,8 @@ name: whs
 dependencies:
   - deb: python3-fastapi
   - deb: python3-python-multipart
+  - deb: python3-sqlalchemy
+  - deb: python3-openssl
   - pypi: entanglement @ git+https://github.com/hadron/entanglement@master
 config:
   authorized_keys: /dev/null
@@ -13,3 +15,4 @@ config:
     - carthage.libvirt
     - carthage.podman
     - https://github.com/hadron/carthage-base
+    - carthage.entanglement

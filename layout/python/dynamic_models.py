@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import dataclasses
+
 from pydantic import BaseModel, Field
 
 from carthage import Machine
 from carthage.deployment import Deployable, DeploymentFailure, DeploymentResult
 from carthage.network import TechnologySpecificNetwork, this_network
+from carthage.modeling import NetworkModel
+from carthage.entanglement import carthage_registry, entanglement_instrumentation
+from entanglement.interface import sync_property
+from entanglement.memory import StoreInSyncStoreMixin
 
 from .models import Device
 
@@ -100,3 +106,59 @@ def map_deployment_result(
 
 
 __all__ += ["map_deployment_result"]
+
+
+class WhsNetworkModel(NetworkModel):
+    """A WHS network.
+
+    Subclasses :class:`carthage.modeling.NetworkModel` so it drops into a
+    ``CarthageLayout`` like any other network, and is instrumented (below) so
+    that instantiating one stores a :class:`WhsEntangledNetwork` in the carthage
+    entanglement registry.
+    """
+
+
+__all__ += ["WhsNetworkModel"]
+
+
+@dataclasses.dataclass
+class WhsEntangledNetwork(StoreInSyncStoreMixin):
+    """A WHS network as synchronized into the carthage entanglement registry.
+
+    Carries the network's ``name``, its ``v4_config`` network (CIDR), and the
+    id of the injector that produced the :class:`WhsNetworkModel`. Belongs
+    to :data:`carthage_registry` via ``sync_registry``.
+    """
+
+    name: str = sync_property(constructor=True)
+    network: str = sync_property(constructor=True)
+    injector_id: int = sync_property(constructor=True)
+
+    sync_primary_keys = ('name',)
+    sync_registry = carthage_registry
+
+
+__all__ += ["WhsEntangledNetwork"]
+
+
+@entanglement_instrumentation(WhsNetworkModel)
+def sync_whs_network(value, registry):
+    """Store a :class:`WhsEntangledNetwork` for each instantiated WhsNetworkModel.
+
+    Invoked by the carthage entanglement instrumentation whenever a
+    :class:`WhsNetworkModel` is produced by an injector.
+    """
+    try:
+        network = str(value.v4_config.network)
+    except AttributeError:
+        network = ""
+    registry.store_synchronize(
+        WhsEntangledNetwork(
+            name=value.name,
+            network=network,
+            injector_id=registry.injector_id(value.injector),
+        )
+    )
+
+
+
