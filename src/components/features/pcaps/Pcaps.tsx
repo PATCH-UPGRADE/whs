@@ -193,7 +193,7 @@ export const PcapsContainer = () => {
       </Breadcrumb>
 
       <Button
-        className="self-end text-md font-semibold bg-blue-800 mb-1 hover:bg-blue-700 transition-color"
+        className="self-end text-base font-semibold bg-blue-800 mb-1 hover:bg-blue-700 transition-color"
         onClick={() => setOpen(true)}
       >
         <PlusIcon />
@@ -239,7 +239,7 @@ const PcapsList = ({ pcaps }: PcapsListI) => {
               {headerGroup.headers.map((header, index) => (
                 <th
                   key={index}
-                  className="border-b border-gray-200 px-4 py-3 font-bold uppercase text-md tracking-wide"
+                  className="border-b border-gray-200 px-4 py-3 font-bold uppercase text-base tracking-wide"
                 >
                   {header.isPlaceholder
                     ? null
@@ -256,7 +256,7 @@ const PcapsList = ({ pcaps }: PcapsListI) => {
           {table.getRowModel().rows.map((row, index) => (
             <tr
               key={index}
-              className="odd:bg-white even:bg-blue-50 cursor-pointer transition-colors hover:bg-gray-200 text-md"
+              className="odd:bg-white even:bg-blue-50 cursor-pointer transition-colors hover:bg-gray-200 text-base"
             >
               {row.getVisibleCells().map((cell, index) => (
                 <td

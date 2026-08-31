@@ -179,7 +179,7 @@ export const DeployTopologyContainer = () => {
           <Button
             key={i}
             className={cn(
-              "text-md hover:opacity-80 hover:shadow-md cursor-pointer",
+              "text-base hover:opacity-80 hover:shadow-md cursor-pointer",
               statusType.bgColor,
               statusType.borderColor,
               statusType.textColor,

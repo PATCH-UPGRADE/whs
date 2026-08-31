@@ -4,6 +4,7 @@ import { useEntangledValue, useEntanglementManager } from "entanglement-react";
 import { SquarePen, TrashIcon } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Device } from "@/models";
 import { DeviceCreateUpdateModal } from "./Devices";
@@ -112,50 +113,33 @@ export const columns: ColumnDef<Device>[] = [
     meta: { title: "pending" },
     header: "VM Image Status",
     cell: ({ row }) => {
+      const image = useEntangledValue(row.original, (d) => d.vm_image);
+
       if (row.original.type !== DeviceType.vm) {
         return;
       }
 
-      const image = row.original.vm_image;
       if (!image) {
-        return (
-          <span className="inline-flex rounded-full bg-red-300/30 px-2 py-1 text-sm font-medium text-red-900">
-            Image field not set
-          </span>
-        );
-      } else if (image.pending) {
-        return (
-          <span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-sm font-medium text-amber-900">
-            Pending Upload
-          </span>
-        );
+        return <Badge variant={"red"}>Image field not set</Badge>;
       }
 
-      return (
-        <span className="inline-flex rounded-full bg-green-300/30 px-2 py-1 text-sm font-medium text-green-900">
-          Uploaded
-        </span>
-      );
+      if (image.pending) {
+        return <Badge variant={"orange"}>Pending Upload</Badge>;
+      }
+
+      return <Badge variant={"green"}>Uploaded</Badge>;
     },
   },
   {
     accessorKey: "enabled_for_deployment",
     meta: { title: "enabled_for_deployment" },
-    header: "Enabled",
+    header: "Status",
     cell: ({ row }) => {
       if (!row.original.enabled_for_deployment) {
-        return (
-          <span className="inline-flex rounded-full bg-red-300/30 px-2 py-1 text-sm font-medium text-red-900">
-            Disabled
-          </span>
-        );
+        return <Badge variant={"disabled"}>Disabled</Badge>;
       }
 
-      return (
-        <span className="inline-flex rounded-full bg-green-300/30 px-2 py-1 text-sm font-medium text-green-900">
-          Enabled
-        </span>
-      );
+      return <Badge variant={"green"}>Enabled</Badge>;
     },
   },
   {

@@ -117,7 +117,7 @@ export const DeviceDetail = () => {
             </a>
           )}
         </div>
-        <div className="text-md text-neutral-900">
+        <div className="text-base text-neutral-900">
           <span className="font-bold">Description:</span> {device.description}
         </div>
       </div>
@@ -144,7 +144,7 @@ export const DeviceDetail = () => {
 
         <div className="w-full">
           <TabsContent value="inspect">
-            <pre className="w-full p-4 overflow-x-auto text-md font-mono rounded bg-zinc-100 text-zinc-800 border border-zinc-200">
+            <pre className="w-full p-4 overflow-x-auto text-base font-mono rounded bg-zinc-100 text-zinc-800 border border-zinc-200">
               <code className="w-auto">{JSON.stringify(device, null, 2)}</code>
             </pre>
             <span className="text-red-700">
@@ -245,7 +245,7 @@ const VncConnectBanner = ({
       )}
     >
       {isError ? (
-        <div className="flex justify-center w-64 px-3 py-1.5 rounded bg-red-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+        <div className="flex justify-center w-64 px-3 py-1.5 rounded bg-red-600 text-white text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
           {errorMessage}
         </div>
       ) : (
@@ -253,7 +253,7 @@ const VncConnectBanner = ({
           type="button"
           onClick={onClickVncStart}
           disabled={vncStarted}
-          className="w-48 px-3 py-1.5 rounded bg-blue-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          className="w-48 px-3 py-1.5 rounded bg-blue-600 text-white text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
           Connect
         </button>
@@ -289,7 +289,7 @@ const SerialConnectBanner = ({
       )}
     >
       {isError ? (
-        <div className="flex justify-center w-64 px-3 py-1.5 rounded bg-red-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+        <div className="flex justify-center w-64 px-3 py-1.5 rounded bg-red-600 text-white text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
           {errorMessage}
         </div>
       ) : (
@@ -297,7 +297,7 @@ const SerialConnectBanner = ({
           type="button"
           onClick={onClickSerialStart}
           disabled={serialStarted}
-          className="w-48 px-3 py-1.5 rounded bg-blue-600 text-white text-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          className="w-48 px-3 py-1.5 rounded bg-blue-600 text-white text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
           Connect
         </button>

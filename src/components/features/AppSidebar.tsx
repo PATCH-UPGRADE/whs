@@ -2,11 +2,11 @@ import type React from "react";
 import { cn } from "@/lib/utils";
 
 const urls = [
-  { name: "Devices", path: "/devices" },
   { name: "VM Images", path: "/images" },
-  { name: "PCAPs", path: "/pcaps" },
+  { name: "Devices", path: "/devices" },
+  // { name: "PCAPs", path: "/pcaps" },
   { name: "Deploy", path: "/deploy" }, // TODO: Make this proper once WHS backend supports multiple deploys
-  { name: "Import / Export", path: "/import-export" },
+  // { name: "Import / Export", path: "/import-export" },
 ];
 
 export const AppSidebar: React.FC = () => {

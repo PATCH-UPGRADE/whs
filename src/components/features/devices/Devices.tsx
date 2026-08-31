@@ -684,7 +684,7 @@ export const DevicesContainer = () => {
       item.architecture = "x86_64";
     }
 
-    const owner = [...SyncOwner.syncStorageMap.values()][0];
+    const owner = Array.from(SyncOwner.syncStorageMap.values())[0];
     const newDevice = new Device();
     Object.assign(newDevice, item, { _sync_owner: owner });
 
@@ -713,7 +713,7 @@ export const DevicesContainer = () => {
       </Breadcrumb>
 
       <Button
-        className="self-end text-md font-semibold bg-blue-800 mb-1 hover:bg-blue-700 transition-color"
+        className="self-end text-base font-semibold bg-blue-800 mb-1 hover:bg-blue-700 transition-color"
         onClick={() => setOpen(true)}
       >
         <PlusIcon />
@@ -753,13 +753,10 @@ function DeviceRow({ row }: DeviceRowProps) {
           params: { deviceId: device?.id ?? row.original.id },
         })
       }
-      className="odd:bg-white even:bg-blue-50 cursor-pointer transition-colors hover:bg-gray-200 text-md"
+      className="odd:bg-white even:bg-blue-50 cursor-pointer transition-colors hover:bg-gray-200"
     >
       {row.getVisibleCells().map((cell) => (
-        <td
-          key={cell.id}
-          className="max-w-[125px] truncate px-4 py-3 text-gray-700"
-        >
+        <td key={cell.id} className="px-4 py-3 truncate">
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
         </td>
       ))}
@@ -780,14 +777,14 @@ const DevicesList = ({ devices }: DevicesListProps) => {
 
   return (
     <div className="overflow-x-auto rounded border border-gray-300">
-      <table className="w-full text-left text-sm">
+      <table className="w-full text-sm">
         <thead className="bg-blue-200">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
                 <th
                   key={header.id}
-                  className="border-b border-gray-200 px-4 py-3 font-bold uppercase text-md tracking-wide"
+                  className="border-b border-gray-200 px-4 py-3 text-left font-bold uppercase "
                 >
                   {header.isPlaceholder
                     ? null
@@ -800,7 +797,7 @@ const DevicesList = ({ devices }: DevicesListProps) => {
             </tr>
           ))}
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody className="">
           {table.getRowModel().rows.map((row) => (
             <DeviceRow key={row.id} row={row} />
           ))}

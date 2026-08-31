@@ -1,12 +1,13 @@
 import type { ColumnDef } from "@tanstack/react-table";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { Image } from "./types";
+import type { DeviceImage } from "./types";
 
 export const getImageColumns = ({
   onUploadPending,
 }: {
-  onUploadPending: (image: Image) => void;
-}): ColumnDef<Image>[] => [
+  onUploadPending: (image: DeviceImage) => void;
+}): ColumnDef<DeviceImage>[] => [
   // {
   //   accessorKey: "id",
   //   meta: { title: "id" },
@@ -38,11 +39,9 @@ export const getImageColumns = ({
     header: "Status",
     cell: ({ row }) =>
       row.original.pending ? (
-        <span className="rounded-full border-2 bg-red-200 px-2 py-1 font-medium text-red-950">
-          Pending Upload
-        </span>
+        <Badge variant={"red"}>Pending Upload</Badge>
       ) : (
-        <span className="">Uploaded</span>
+        <Badge variant={"green"}>Uploaded</Badge>
       ),
   },
   {

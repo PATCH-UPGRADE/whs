@@ -88,14 +88,5 @@ export const deviceOutputSchema = z.object({
   dns_servers: z.array(z.string()),
 });
 
-export const devicesSchema = z.array(deviceInputSchema);
-
-export const createDeviceSchema = z.object({});
-
-export const updateDeviceSettingsSchema = z.object({});
-
-export const typologyResponseSchema = z.object({});
-
 export type DeviceFormValues = z.infer<typeof deviceInputSchema>;
-
 export type Device = z.infer<typeof deviceOutputSchema>;
