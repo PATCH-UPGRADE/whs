@@ -5,7 +5,7 @@ import {
 } from "@tanstack/react-router";
 import { DeviceDetail } from "./components/features/devices/DeviceDetail";
 import { DevicesContainer } from "./components/features/devices/Devices";
-import { ImagesContainer } from "./components/features/images/Images";
+import { VmImagesContainer } from "./components/features/images/Images";
 import { ImportExportContainer } from "./components/features/import-export/ImportExport";
 import { PcapsContainer } from "./components/features/pcaps/Pcaps";
 import { DeployTopologyContainer } from "./components/features/topologies/Topologies";
@@ -30,8 +30,8 @@ const routes = [
   }),
   createRoute({
     getParentRoute: () => rootRoute,
-    path: "/images",
-    component: () => <ImagesContainer />,
+    path: "/vm-images",
+    component: () => <VmImagesContainer />,
   }),
   // createRoute({
   //   getParentRoute: () => rootRoute,

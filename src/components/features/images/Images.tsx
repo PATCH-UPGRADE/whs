@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   flexRender,
   getCoreRowModel,
+  Row,
   useReactTable,
 } from "@tanstack/react-table";
 import { PlusIcon, SlashIcon } from "lucide-react";
@@ -36,12 +37,14 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { getImageColumns } from "./columns";
-import { getImages, useUploadImage } from "./hooks";
 import {
-  type Image,
-  type ImageUploadFormValues,
-  imageUploadInputSchema,
+  DeviceImage,
+  type DeviceImageUploadFormValues,
+  deviceImageUploadInputSchema,
 } from "./types";
+import { useEntangledList, useEntangledObject } from "entanglement-react";
+import { VmImage } from "@/models";
+import { SyncOwner } from "entanglement-core/persistence";
 
 export const ImageUploadModal = ({
   form,
@@ -50,14 +53,14 @@ export const ImageUploadModal = ({
   pendingImage,
   setOpen,
 }: {
-  form: UseFormReturn<ImageUploadFormValues>;
-  handleCreate: (values: ImageUploadFormValues) => void;
+  form: UseFormReturn<DeviceImageUploadFormValues>;
+  handleCreate: (values: DeviceImageUploadFormValues) => void;
   open: boolean;
-  pendingImage?: Image | null;
+  pendingImage?: DeviceImage | null;
   setOpen: (open: boolean) => void;
   isUpdate?: boolean;
 }) => {
-  const onSubmit = (values: ImageUploadFormValues) => {
+  const onSubmit = (values: DeviceImageUploadFormValues) => {
     handleCreate(values);
   };
 
@@ -176,23 +179,15 @@ export const ImageUploadModal = ({
   );
 };
 
-export const ImagesContainer = () => {
-  const {
-    data: images,
-    isPending,
-    isError,
-    error,
-  } = useQuery({
-    queryKey: ["images"],
-    queryFn: getImages,
-  });
+export const VmImagesContainer = () => {
+  const images = useEntangledList(VmImage);
 
-  const uploadImage = useUploadImage();
+  // const uploadImage = useUploadImage();
   const [open, setOpen] = useState(false);
-  const [pendingImage, setPendingImage] = useState<Image | null>(null);
+  const [pendingImage, setPendingImage] = useState<DeviceImage | null>(null);
 
-  const form = useForm<ImageUploadFormValues>({
-    resolver: zodResolver(imageUploadInputSchema),
+  const form = useForm<DeviceImageUploadFormValues>({
+    resolver: zodResolver(deviceImageUploadInputSchema),
     defaultValues: {
       file: undefined,
       description: "",
@@ -220,7 +215,7 @@ export const ImagesContainer = () => {
     }
   }, [form, open, pendingImage]);
 
-  const handleCreate = (item: ImageUploadFormValues) => {
+  const handleCreate = async (item: DeviceImageUploadFormValues) => {
     // repack data as FormData so the browser auto sets the header to
     // Content-Type: multipart/form-data. the browser has to do it itself
     const formData = new FormData();
@@ -228,14 +223,19 @@ export const ImagesContainer = () => {
     formData.append("description", item.description);
     formData.append("version", item.version);
 
-    uploadImage.mutate(formData, {
-      onSuccess: () => {
-        setOpen(false);
-      },
-      onError: () => {
-        setOpen(true);
-      },
-    });
+    const owner = Array.from(SyncOwner.syncStorageMap.values())[0];
+    const newVmImage = new VmImage();
+    Object.assign(newVmImage, item, { _sync_owner: owner });
+
+    try {
+      const created = await newVmImage.syncCreate(syncManager);
+      form.reset();
+      setOpen(false);
+      console.log("uploaded image:", created);
+    } catch (e: unknown) {
+      setOpen(true);
+      console.log("error creating device:", e);
+    }
   };
 
   const handleOpenNewUpload = () => {
@@ -243,19 +243,10 @@ export const ImagesContainer = () => {
     setOpen(true);
   };
 
-  const handleOpenPendingUpload = (image: Image) => {
+  const handleOpenPendingUpload = (image: DeviceImage) => {
     setPendingImage(image);
     setOpen(true);
   };
-
-  if (isPending) {
-    return <ImagesLoading />;
-  }
-
-  if (isError) {
-    console.error(error);
-    return <ImagesError />;
-  }
 
   return (
     <div className="flex flex-col">
@@ -271,11 +262,11 @@ export const ImagesContainer = () => {
       </Breadcrumb>
 
       <Button
-        className="self-end text-md font-semibold bg-blue-800 mb-1 hover:bg-blue-700 transition-color"
+        className="self-end text-base font-semibold bg-blue-800 mb-1 hover:bg-blue-700 transition-color"
         onClick={handleOpenNewUpload}
       >
         <PlusIcon />
-        Add Image
+        Upload Image
       </Button>
 
       <ImageUploadModal
@@ -285,41 +276,53 @@ export const ImagesContainer = () => {
         setOpen={setOpen}
         handleCreate={handleCreate}
       />
-      <ImagesList images={images} onUploadPending={handleOpenPendingUpload} />
+      <VmImagesList images={images} onUploadPending={handleOpenPendingUpload} />
     </div>
   );
 };
 
-const ImagesLoading = () => {
-  return <div>Images loading...</div>;
-};
-
-const ImagesError = () => {
-  return <div>An error occured while loading Images!</div>;
-};
-
-interface ImagesListI {
-  images: Image[];
-  onUploadPending: (image: Image) => void;
+interface DeviceImageRowProps {
+  row: Row<VmImage>;
 }
 
-const ImagesList = ({ images, onUploadPending }: ImagesListI) => {
+function VmImageRow({ row }: DeviceImageRowProps) {
+  const image = useEntangledObject(row.original);
+
+  return (
+    <tr
+      className="odd:bg-white even:bg-blue-50 transition-colors hover:bg-gray-200"
+    >
+      {row.getVisibleCells().map((cell) => (
+        <td key={cell.id} className="px-4 py-3 truncate">
+          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+interface VmImagesListProps {
+  images: readonly VmImage[];
+  onUploadPending: (image: DeviceImage) => void;
+}
+
+const VmImagesList = ({ images, onUploadPending }: VmImagesListProps) => {
   const table = useReactTable({
-    data: images,
+    data: images as VmImage[],
     columns: getImageColumns({ onUploadPending }),
     getCoreRowModel: getCoreRowModel(),
   });
 
   return (
     <div className="overflow-x-auto rounded border border-gray-300">
-      <table className="w-full text-left text-sm">
+      <table className="w-full">
         <thead className="bg-blue-200">
-          {table.getHeaderGroups().map((headerGroup, index) => (
-            <tr key={index}>
-              {headerGroup.headers.map((header, index) => (
+          {table.getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id}>
+              {headerGroup.headers.map((header) => (
                 <th
-                  key={index}
-                  className="border-b border-gray-200 px-4 py-3 font-bold uppercase text-md tracking-wide"
+                  key={header.id}
+                  className="border-b border-gray-200 px-4 py-3 text-left font-bold uppercase "
                 >
                   {header.isPlaceholder
                     ? null
@@ -332,21 +335,9 @@ const ImagesList = ({ images, onUploadPending }: ImagesListI) => {
             </tr>
           ))}
         </thead>
-        <tbody className="divide-y divide-gray-100">
-          {table.getRowModel().rows.map((row, index) => (
-            <tr
-              key={index}
-              className="odd:bg-white even:bg-blue-50 cursor-pointer transition-colors hover:bg-gray-200 text-md"
-            >
-              {row.getVisibleCells().map((cell, index) => (
-                <td
-                  key={index}
-                  className="max-w-[125px] truncate px-4 py-3 text-gray-700"
-                >
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
+        <tbody className="">
+          {table.getRowModel().rows.map((row) => (
+            <VmImageRow key={row.id} row={row} />
           ))}
         </tbody>
       </table>

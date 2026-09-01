@@ -6,7 +6,7 @@ export enum ImageType {
   container,
 }
 
-export const imageOutputSchema = z.object({
+export const deviceImageOutputSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string(),
@@ -15,18 +15,18 @@ export const imageOutputSchema = z.object({
   pending: z.boolean(),
 });
 
-export const imageUploadInputSchema = z.object({
+export const deviceImageUploadInputSchema = z.object({
   file: z.instanceof(File),
   description: z.string(),
   version: z.string(),
 });
 
-export const imageUploadResponseSchema = z.object({
+export const deviceImageUploadResponseSchema = z.object({
   message: z.string(),
 });
 
-export type Image = z.infer<typeof imageOutputSchema>;
-export type ImageUploadFormValues = z.infer<typeof imageUploadInputSchema>;
-export type UploadImageResponseSchema = z.infer<
-  typeof imageUploadResponseSchema
+export type DeviceImage = z.infer<typeof deviceImageOutputSchema>;
+export type DeviceImageUploadFormValues = z.infer<typeof deviceImageUploadInputSchema>;
+export type UploadDeviceImageResponseSchema = z.infer<
+  typeof deviceImageUploadResponseSchema
 >;

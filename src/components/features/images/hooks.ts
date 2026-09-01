@@ -1,15 +1,15 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { carthageFetcher, carthageFetcherUpload } from "@/fetcher";
-import type { Image, UploadImageResponseSchema } from "./types";
+import type { DeviceImage, UploadDeviceImageResponseSchema } from "./types";
 
-export const getImages = () => carthageFetcher<Image[]>("/images");
+export const getImages = () => carthageFetcher<DeviceImage[]>("/images");
 
 export const useUploadImage = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: FormData) =>
-      carthageFetcherUpload<UploadImageResponseSchema>(`/images/upload`, {
+      carthageFetcherUpload<UploadDeviceImageResponseSchema>(`/images/upload`, {
         method: "post",
         body: data,
       }),
