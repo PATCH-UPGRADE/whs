@@ -16,7 +16,10 @@ export const getImageColumns = ({
   {
     accessorKey: "name",
     meta: { title: "name" },
-    header: "Image Name",
+    header: "Name",
+    cell: ({ row }) => {
+      return row.original.name.replace(/\.[^/.]+$/, "");
+    },
   },
   {
     accessorKey: "description",
@@ -24,14 +27,14 @@ export const getImageColumns = ({
     header: "Description",
   },
   {
-    accessorKey: "type",
-    meta: { title: "type" },
-    header: "Type",
-  },
-  {
     accessorKey: "version",
     meta: { title: "version" },
     header: "Version",
+  },
+  {
+    accessorKey: "type",
+    meta: { title: "type" },
+    header: "Type",
   },
   {
     accessorKey: "pending",
@@ -39,7 +42,7 @@ export const getImageColumns = ({
     header: "Status",
     cell: ({ row }) =>
       row.original.pending ? (
-        <Badge variant={"red"}>Pending Upload</Badge>
+        <Badge variant={"orange"}>Pending Upload</Badge>
       ) : (
         <Badge variant={"green"}>Uploaded</Badge>
       ),

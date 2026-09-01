@@ -1,9 +1,20 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useEntangledValue, useEntanglementManager } from "entanglement-react";
-import { SquarePen, TrashIcon } from "lucide-react";
+import { ArrowRight, SquarePen, TrashIcon } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Device } from "@/models";
@@ -24,7 +35,7 @@ export const columns: ColumnDef<Device>[] = [
   {
     accessorKey: "name",
     meta: { title: "name" },
-    header: "Device Name",
+    header: "Name",
   },
   {
     accessorKey: "description",
@@ -34,7 +45,7 @@ export const columns: ColumnDef<Device>[] = [
   {
     accessorKey: "type",
     meta: { title: "type" },
-    header: "Device Type",
+    header: "Type",
     cell: ({ row }) => {
       return DEVICE_TYPE_TO_DISPLAY_TEXT[row.original.type];
     },
@@ -133,7 +144,7 @@ export const columns: ColumnDef<Device>[] = [
   {
     accessorKey: "enabled_for_deployment",
     meta: { title: "enabled_for_deployment" },
-    header: "Status",
+    header: "Enabled",
     cell: ({ row }) => {
       if (!row.original.enabled_for_deployment) {
         return <Badge variant={"disabled"}>Disabled</Badge>;
@@ -149,12 +160,15 @@ export const columns: ColumnDef<Device>[] = [
     cell: ({ row }) => {
       const device = row.original;
 
+      const navigate = useNavigate();
       const syncManager = useEntanglementManager();
       const image = useEntangledValue(
         device,
         (d) => d.vm_image ?? d.container_image,
       );
+
       const [editModalOpen, setEditModalOpen] = useState(false);
+      const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
       const deviceForm = useForm<DeviceFormValues>({
         resolver: zodResolver(deviceInputSchema),
@@ -180,7 +194,7 @@ export const columns: ColumnDef<Device>[] = [
         },
       });
 
-      const handleRemove = () => {
+      const handleDelete = () => {
         device.syncDelete(syncManager);
       };
 
@@ -199,29 +213,41 @@ export const columns: ColumnDef<Device>[] = [
       };
 
       return (
-        <div className="flex justify-between">
-          <div className="flex">
-            <Button
-              className=""
-              onClick={(e) => {
-                e.stopPropagation();
-                setEditModalOpen(true);
-              }}
-            >
-              <SquarePen />
-              Update
-            </Button>
-          </div>
+        <div className="flex gap-2">
+          <Button
+            className="default"
+            onClick={() => {
+              navigate({
+                to: "/devices/$deviceId",
+                params: { deviceId: device?.id ?? row.original.id },
+              });
+            }}
+          >
+            <ArrowRight data-icon="inline-start" />
+            View
+          </Button>
 
           <Button
-            className="self-end"
+            className="bg-neutral-300 text-black"
+            variant="secondary"
             onClick={(e) => {
               e.stopPropagation();
-              handleRemove();
+              setEditModalOpen(true);
+            }}
+          >
+            <SquarePen data-icon="inline-start" />
+            Update
+          </Button>
+
+          <Button
+            className=""
+            onClick={(e) => {
+              e.stopPropagation();
+              setDeleteModalOpen(true);
             }}
             variant="destructive"
           >
-            <TrashIcon />
+            <TrashIcon data-icon="inline-start" />
             Delete
           </Button>
 
@@ -234,6 +260,27 @@ export const columns: ColumnDef<Device>[] = [
               isUpdate={true}
             />
           )}
+
+          <AlertDialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete {device.name}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete the device. This action cannot be
+                  undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive/30 text-destructive hover:bg-destructive/40"
+                  onClick={handleDelete}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       );
     },

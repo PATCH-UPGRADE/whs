@@ -1,5 +1,4 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "@tanstack/react-router";
 import {
   flexRender,
   getCoreRowModel,
@@ -68,28 +67,26 @@ import {
 
 const allDeviceArchitectureTypes = Object.values(DeviceArchitectureType);
 
+interface DeviceCreateUpdateModalProps {
+  form: UseFormReturn<DeviceFormValues>;
+  handleCreate: (values: DeviceFormValues) => void;
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  isUpdate?: boolean;
+}
+
 export const DeviceCreateUpdateModal = ({
   form,
   handleCreate,
   open,
   setOpen,
   isUpdate,
-}: {
-  form: UseFormReturn<DeviceFormValues>;
-  handleCreate: (values: DeviceFormValues) => void;
-  open: boolean;
-  setOpen: (open: boolean) => void;
-  isUpdate?: boolean;
-}) => {
+}: DeviceCreateUpdateModalProps) => {
   const images = useEntangledList(VmImage);
 
   const onSubmit = (values: DeviceFormValues) => {
     handleCreate(values);
   };
-
-  if (isUpdate) {
-    console.log("form:", form.getValues());
-  }
 
   const isFormPending = form.formState.isSubmitting;
   const verbLabel = isUpdate ? "Update" : "Create";
@@ -689,13 +686,12 @@ export const DevicesContainer = () => {
     Object.assign(newDevice, item, { _sync_owner: owner });
 
     try {
-      const created = await newDevice.syncCreate(syncManager);
+      const _created = await newDevice.syncCreate(syncManager);
       form.reset();
       setOpen(false);
-      console.log("created device:", created);
     } catch (e: unknown) {
       setOpen(true);
-      console.log("error creating device:", e);
+      console.error("error creating new device:", e.message);
     }
   };
 
@@ -736,25 +732,14 @@ interface DeviceRowProps {
 }
 
 function DeviceRow({ row }: DeviceRowProps) {
-  const navigate = useNavigate();
-
   const device = useEntangledObject(row.original);
-  const image = useEntangledValue(
+  const _image = useEntangledValue(
     device,
     (d) => d.vm_image ?? d.container_image,
   );
-  console.log("image:", image);
 
   return (
-    <tr
-      onClick={() =>
-        navigate({
-          to: "/devices/$deviceId",
-          params: { deviceId: device?.id ?? row.original.id },
-        })
-      }
-      className="odd:bg-white even:bg-blue-50 cursor-pointer transition-colors hover:bg-gray-200"
-    >
+    <tr className="odd:bg-white even:bg-blue-50">
       {row.getVisibleCells().map((cell) => (
         <td key={cell.id} className="px-4 py-3 truncate">
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -776,15 +761,15 @@ const DevicesList = ({ devices }: DevicesListProps) => {
   });
 
   return (
-    <div className="overflow-x-auto rounded border border-gray-300">
-      <table className="w-full text-sm">
+    <div className="rounded border border-gray-300">
+      <table className="w-full">
         <thead className="bg-blue-200">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
                 <th
                   key={header.id}
-                  className="border-b border-gray-200 px-4 py-3 text-left font-bold uppercase "
+                  className="border-b border-gray-200 px-4 py-3 text-left font-bold uppercase"
                 >
                   {header.isPlaceholder
                     ? null

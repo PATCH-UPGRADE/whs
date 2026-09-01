@@ -275,7 +275,7 @@ export const ImagesContainer = () => {
         onClick={handleOpenNewUpload}
       >
         <PlusIcon />
-        Add Image
+        Upload Image
       </Button>
 
       <ImageUploadModal
@@ -312,7 +312,7 @@ const ImagesList = ({ images, onUploadPending }: ImagesListI) => {
 
   return (
     <div className="overflow-x-auto rounded border border-gray-300">
-      <table className="w-full text-left text-sm">
+      <table className="w-full text-left">
         <thead className="bg-blue-200">
           {table.getHeaderGroups().map((headerGroup, index) => (
             <tr key={index}>
@@ -332,17 +332,11 @@ const ImagesList = ({ images, onUploadPending }: ImagesListI) => {
             </tr>
           ))}
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody className="">
           {table.getRowModel().rows.map((row, index) => (
-            <tr
-              key={index}
-              className="odd:bg-white even:bg-blue-50 cursor-pointer transition-colors hover:bg-gray-200 text-base"
-            >
+            <tr key={index} className="odd:bg-white even:bg-blue-50 text-base">
               {row.getVisibleCells().map((cell, index) => (
-                <td
-                  key={index}
-                  className="max-w-[125px] truncate px-4 py-3 text-gray-700"
-                >
+                <td key={index} className="px-4 py-3 truncate">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
               ))}

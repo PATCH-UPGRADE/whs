@@ -6,6 +6,7 @@ import {
 } from "entanglement-react";
 import { Braces, ScreenShare, SlashIcon, SquareTerminal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -106,18 +107,16 @@ export const DeviceDetail = () => {
         </BreadcrumbList>
       </Breadcrumb>
 
-      <div className="flex flex-col mt-3">
-        <div className="text-xl">
-          <span className="font-bold">Device Name:</span> {device.name}
+      <div className="flex flex-col my-2 gap-2">
+        <div className="flex text-lg gap-2">
+          <span className="font-bold">Name:</span> {device.name}
           {isVmImagePending && (
             <a href={"/images"}>
-              <span className="inline-flex rounded-full bg-amber-100 ml-2 px-2 py-1 text-xs font-medium text-amber-900">
-                Pending image upload
-              </span>
+              <Badge variant={"orange"}>Pending Upload</Badge>
             </a>
           )}
         </div>
-        <div className="text-base text-neutral-900">
+        <div className="flex gap-2">
           <span className="font-bold">Description:</span> {device.description}
         </div>
       </div>
