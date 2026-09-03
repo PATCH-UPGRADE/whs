@@ -690,6 +690,11 @@ export const DevicesContainer = () => {
     }
   };
 
+  const enabledDevicesCount = devices.filter(
+    (d) => d.enabled_for_deployment,
+  ).length;
+  const enabledDisabled = `${enabledDevicesCount} Enabled, ${devices.length - enabledDevicesCount} Disabled`;
+
   return (
     <div className="flex flex-col">
       <Breadcrumb>
@@ -703,13 +708,19 @@ export const DevicesContainer = () => {
         </BreadcrumbList>
       </Breadcrumb>
 
-      <Button
-        className="self-end text-base font-semibold bg-blue-800 mb-1 hover:bg-blue-700 transition-color"
-        onClick={() => setOpen(true)}
-      >
-        <PlusIcon />
-        Add Device
-      </Button>
+      <div className="flex justify-between pt-2">
+        <div className="text-lg">
+          <span className="font-bold">{devices.length ?? 0} Devices </span>(
+          {enabledDisabled})
+        </div>
+        <Button
+          className="text-base font-semibold bg-blue-800 mb-1 hover:bg-blue-700 transition-color"
+          onClick={() => setOpen(true)}
+        >
+          <PlusIcon data-icon="inline-start" />
+          Add Device
+        </Button>
+      </div>
 
       <DeviceCreateUpdateModal
         form={form}
@@ -727,13 +738,6 @@ interface DeviceRowProps {
 }
 
 function DeviceRow({ row }: DeviceRowProps) {
-  // TODO: double-check if hooks used in columns.tsx trigger rerenders as expected
-  // const device = useEntangledObject(row.original);
-  // const _image = useEntangledValue(
-  //   device,
-  //   (d) => d.vm_image ?? d.container_image,
-  // );
-
   return (
     <tr className="odd:bg-white even:bg-blue-50">
       {row.getVisibleCells().map((cell) => (

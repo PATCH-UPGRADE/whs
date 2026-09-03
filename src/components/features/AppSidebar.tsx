@@ -1,12 +1,13 @@
+import { BoxIcon, ComputerIcon, Plug2Icon } from "lucide-react";
 import type React from "react";
 import { cn } from "@/lib/utils";
 
 const urls = [
-  { name: "VM Images", path: "/images" },
-  { name: "Devices", path: "/devices" },
-  // { name: "PCAPs", path: "/pcaps" },
-  { name: "Deploy", path: "/deploy" }, // TODO: Make this proper once WHS backend supports multiple deploys
-  // { name: "Import / Export", path: "/import-export" },
+  { name: "VM Images", path: "/images", iconElement: BoxIcon },
+  { name: "Devices", path: "/devices", iconElement: ComputerIcon },
+  // { name: "PCAPs", path: "/pcaps", iconElement: EthernetPortIcon },
+  { name: "Deploy", path: "/deploy", iconElement: Plug2Icon },
+  // { name: "Import / Export", path: "/import-export", iconElement: ArrowDownUpIcon },
 ];
 
 export const AppSidebar: React.FC = () => {
@@ -24,12 +25,13 @@ export const AppSidebar: React.FC = () => {
               key={index}
               href={url.path}
               className={cn(
-                "flex items-center px-6 py-3 font-medium text-gray-700 border-l-6 border-gray-500 hover:bg-muted",
+                "flex items-center gap-3 px-6 py-3 font-medium text-gray-700 border-l-6 border-gray-500 hover:bg-muted",
                 path.includes(url.path) &&
-                  "font-bold bg-blue-50 border-blue-600",
+                  "font-bold bg-blue-50 border-blue-600 text-blue-600",
               )}
             >
-              <span className="mx-3">{url.name}</span>
+              <url.iconElement data-icon="inline-start" />
+              <span className="">{url.name}</span>
             </a>
           ))}
         </nav>

@@ -148,7 +148,7 @@ export const DeviceDetail = () => {
             </pre>
             <span className="text-red-700">
               * not all fields shown are relevant to a given device e.g.
-              "container_image" for Virtual Machines
+              "container_image_id" for Virtual Machines
             </span>
           </TabsContent>
 

@@ -270,13 +270,16 @@ export const ImagesContainer = () => {
         </BreadcrumbList>
       </Breadcrumb>
 
-      <Button
-        className="self-end text-base font-semibold bg-blue-800 mb-1 hover:bg-blue-700 transition-color"
-        onClick={handleOpenNewUpload}
-      >
-        <PlusIcon />
-        Upload Image
-      </Button>
+      <div className="flex justify-between pt-2">
+        <span className="text-lg font-bold">{images.length ?? 0} Images</span>
+        <Button
+          className="self-end text-base font-semibold bg-blue-800 mb-1 hover:bg-blue-700 transition-color"
+          onClick={handleOpenNewUpload}
+        >
+          <PlusIcon data-icon="inline-start" />
+          Upload Image
+        </Button>
+      </div>
 
       <ImageUploadModal
         form={form}

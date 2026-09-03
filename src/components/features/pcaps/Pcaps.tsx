@@ -196,7 +196,7 @@ export const PcapsContainer = () => {
         className="self-end text-base font-semibold bg-blue-800 mb-1 hover:bg-blue-700 transition-color"
         onClick={() => setOpen(true)}
       >
-        <PlusIcon />
+        <PlusIcon data-icon="inline-start" />
         Add PCAP
       </Button>
 
