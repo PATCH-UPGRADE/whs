@@ -1,11 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
 import {
   flexRender,
   getCoreRowModel,
-  Row,
+  type Row,
   useReactTable,
 } from "@tanstack/react-table";
+import { SyncOwner } from "entanglement-core/persistence";
+import { useEntangledList, useEntanglementManager } from "entanglement-react";
 import { PlusIcon, SlashIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { type UseFormReturn, useForm } from "react-hook-form";
@@ -36,15 +37,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { VmImage } from "@/models";
 import { getImageColumns } from "./columns";
 import {
-  DeviceImage,
   type DeviceImageUploadFormValues,
   deviceImageUploadInputSchema,
 } from "./types";
-import { useEntangledList, useEntangledObject } from "entanglement-react";
-import { VmImage } from "@/models";
-import { SyncOwner } from "entanglement-core/persistence";
 
 export const ImageUploadModal = ({
   form,
@@ -56,7 +54,7 @@ export const ImageUploadModal = ({
   form: UseFormReturn<DeviceImageUploadFormValues>;
   handleCreate: (values: DeviceImageUploadFormValues) => void;
   open: boolean;
-  pendingImage?: DeviceImage | null;
+  pendingImage?: VmImage | null;
   setOpen: (open: boolean) => void;
   isUpdate?: boolean;
 }) => {
@@ -180,11 +178,11 @@ export const ImageUploadModal = ({
 };
 
 export const VmImagesContainer = () => {
+  const syncManager = useEntanglementManager();
   const images = useEntangledList(VmImage);
 
-  // const uploadImage = useUploadImage();
   const [open, setOpen] = useState(false);
-  const [pendingImage, setPendingImage] = useState<DeviceImage | null>(null);
+  const [pendingImage, setPendingImage] = useState<VmImage | null>(null);
 
   const form = useForm<DeviceImageUploadFormValues>({
     resolver: zodResolver(deviceImageUploadInputSchema),
@@ -209,8 +207,8 @@ export const VmImagesContainer = () => {
     if (pendingImage) {
       form.reset({
         file: undefined,
-        description: pendingImage.description,
-        version: pendingImage.version,
+        description: pendingImage.description ?? undefined,
+        version: pendingImage.version ?? undefined,
       });
     }
   }, [form, open, pendingImage]);
@@ -243,7 +241,7 @@ export const VmImagesContainer = () => {
     setOpen(true);
   };
 
-  const handleOpenPendingUpload = (image: DeviceImage) => {
+  const handleOpenPendingUpload = (image: VmImage) => {
     setPendingImage(image);
     setOpen(true);
   };
@@ -286,12 +284,8 @@ interface DeviceImageRowProps {
 }
 
 function VmImageRow({ row }: DeviceImageRowProps) {
-  const image = useEntangledObject(row.original);
-
   return (
-    <tr
-      className="odd:bg-white even:bg-blue-50 transition-colors hover:bg-gray-200"
-    >
+    <tr className="odd:bg-white even:bg-blue-50 transition-colors hover:bg-gray-200">
       {row.getVisibleCells().map((cell) => (
         <td key={cell.id} className="px-4 py-3 truncate">
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -303,7 +297,7 @@ function VmImageRow({ row }: DeviceImageRowProps) {
 
 interface VmImagesListProps {
   images: readonly VmImage[];
-  onUploadPending: (image: DeviceImage) => void;
+  onUploadPending: (image: VmImage) => void;
 }
 
 const VmImagesList = ({ images, onUploadPending }: VmImagesListProps) => {

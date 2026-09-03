@@ -26,7 +26,9 @@ export const deviceImageUploadResponseSchema = z.object({
 });
 
 export type DeviceImage = z.infer<typeof deviceImageOutputSchema>;
-export type DeviceImageUploadFormValues = z.infer<typeof deviceImageUploadInputSchema>;
+export type DeviceImageUploadFormValues = z.infer<
+  typeof deviceImageUploadInputSchema
+>;
 export type UploadDeviceImageResponseSchema = z.infer<
   typeof deviceImageUploadResponseSchema
 >;

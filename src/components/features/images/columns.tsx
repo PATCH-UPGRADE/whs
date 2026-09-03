@@ -1,12 +1,12 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
-import type { Image } from "./types";
+import type { VmImage } from "@/models";
 
 export const getImageColumns = ({
   onUploadPending,
 }: {
-  onUploadPending: (image: Image) => void;
-}): ColumnDef<Image>[] => [
+  onUploadPending: (image: VmImage) => void;
+}): ColumnDef<VmImage>[] => [
   // {
   //   accessorKey: "id",
   //   meta: { title: "id" },
