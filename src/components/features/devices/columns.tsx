@@ -161,14 +161,14 @@ export const columns: ColumnDef<Device>[] = [
       const device = row.original;
 
       const navigate = useNavigate();
+      const [editModalOpen, setEditModalOpen] = useState(false);
+      const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+
       const syncManager = useEntanglementManager();
       const image = useEntangledValue(
         device,
         (d) => d.vm_image ?? d.container_image,
       );
-
-      const [editModalOpen, setEditModalOpen] = useState(false);
-      const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
       const deviceForm = useForm<DeviceFormValues>({
         resolver: zodResolver(deviceInputSchema),
@@ -273,9 +273,10 @@ export const columns: ColumnDef<Device>[] = [
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
-                  className="bg-destructive/30 text-destructive hover:bg-destructive/40"
+                  className="bg-destructive/20 text-destructive hover:bg-destructive/40"
                   onClick={handleDelete}
                 >
+                  <TrashIcon data-icon="inline-start" />
                   Delete
                 </AlertDialogAction>
               </AlertDialogFooter>

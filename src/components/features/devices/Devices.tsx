@@ -6,12 +6,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { SyncOwner } from "entanglement-core/persistence";
-import {
-  useEntangledList,
-  useEntangledObject,
-  useEntangledValue,
-  useEntanglementManager,
-} from "entanglement-react";
+import { useEntangledList, useEntanglementManager } from "entanglement-react";
 import { PlusIcon, SlashIcon } from "lucide-react";
 import { useState } from "react";
 import { type UseFormReturn, useForm, useWatch } from "react-hook-form";
@@ -691,7 +686,7 @@ export const DevicesContainer = () => {
       setOpen(false);
     } catch (e: unknown) {
       setOpen(true);
-      console.error("error creating new device:", e.message);
+      console.error("error creating new device:", e);
     }
   };
 
@@ -732,11 +727,12 @@ interface DeviceRowProps {
 }
 
 function DeviceRow({ row }: DeviceRowProps) {
-  const device = useEntangledObject(row.original);
-  const _image = useEntangledValue(
-    device,
-    (d) => d.vm_image ?? d.container_image,
-  );
+  // TODO: double-check if hooks used in columns.tsx trigger rerenders as expected
+  // const device = useEntangledObject(row.original);
+  // const _image = useEntangledValue(
+  //   device,
+  //   (d) => d.vm_image ?? d.container_image,
+  // );
 
   return (
     <tr className="odd:bg-white even:bg-blue-50">
