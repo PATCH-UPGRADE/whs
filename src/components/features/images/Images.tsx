@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-table";
 import { PlusIcon, SlashIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { type UseFormReturn, useForm } from "react-hook-form";
+import { type UseFormReturn, useForm, useWatch } from "react-hook-form";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -49,6 +49,8 @@ export const ImageUploadModal = ({
   open,
   pendingImage,
   setOpen,
+  existingImages,
+  isUploading,
 }: {
   form: UseFormReturn<DeviceImageUploadFormValues>;
   handleCreate: (values: DeviceImageUploadFormValues) => void;
@@ -56,20 +58,32 @@ export const ImageUploadModal = ({
   pendingImage?: DeviceImage | null;
   setOpen: (open: boolean) => void;
   isUpdate?: boolean;
+  existingImages: DeviceImage[];
+  isUploading: boolean;
 }) => {
   const onSubmit = (values: DeviceImageUploadFormValues) => {
     handleCreate(values);
   };
 
-  const isPending = form.formState.isSubmitting;
-  const selectedFile = form.watch("file");
+  const selectedFile = useWatch({ control: form.control, name: "file" });
   const isPendingUpload = Boolean(pendingImage);
   const pendingImageName = pendingImage?.name ?? "";
-  const uploadLabel = isPendingUpload ? "Upload Pending Image" : "Upload Image";
+  const uploadLabel = isUploading
+    ? "Uploading..."
+    : isPendingUpload
+      ? "Upload Pending Image"
+      : "Upload Image";
+
   const filenameMismatch =
-    pendingImage && selectedFile
-      ? selectedFile.name !== pendingImage.name
-      : false;
+    pendingImage && selectedFile && selectedFile.name !== pendingImage.name;
+
+  const duplicateFile =
+    !isPendingUpload &&
+    selectedFile &&
+    existingImages.some((i) => i.name === selectedFile.name);
+
+  const submitDisabled =
+    !selectedFile || isUploading || filenameMismatch || duplicateFile;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -79,7 +93,7 @@ export const ImageUploadModal = ({
           <DialogDescription>
             {isPendingUpload
               ? `Upload the image file for ${pendingImageName}. The filename must match the pending image name.`
-              : "Upload an virtual machine image"}
+              : "Upload a virtual machine image"}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -109,11 +123,17 @@ export const ImageUploadModal = ({
                         }}
                       />
                     </FormControl>
-                    {filenameMismatch ? (
+                    {filenameMismatch && (
                       <p className="text-sm text-destructive">
                         Selected file must be named {pendingImageName}.
                       </p>
-                    ) : null}
+                    )}
+                    {duplicateFile && (
+                      <p className="text-sm text-destructive">
+                        Selected file "{selectedFile?.name}" already exists!
+                        Choose a different file or rename it.
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -161,12 +181,21 @@ export const ImageUploadModal = ({
         </Form>
         <DialogFooter className="px-6 py-4 bg-muted border-t justify-between!">
           <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
+            <Button variant="outline" disabled={isUploading}>
+              Cancel
+            </Button>
           </DialogClose>
           <Button
             type="submit"
             form="image-form"
-            disabled={isPending || filenameMismatch}
+            disabled={submitDisabled}
+            className={
+              isUploading
+                ? "cursor-progress disabled:opacity-100"
+                : submitDisabled
+                  ? "cursor-not-allowed"
+                  : undefined
+            }
           >
             {uploadLabel}
           </Button>
@@ -287,6 +316,8 @@ export const ImagesContainer = () => {
         pendingImage={pendingImage}
         setOpen={setOpen}
         handleCreate={handleCreate}
+        existingImages={images}
+        isUploading={uploadImage.isPending}
       />
       <ImagesList images={images} onUploadPending={handleOpenPendingUpload} />
     </div>
