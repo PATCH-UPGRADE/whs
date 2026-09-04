@@ -16,8 +16,10 @@ export const AppSidebar: React.FC = () => {
   return (
     <div className="fixed left-0 top-0 flex h-screen bg-muted">
       <div className="w-64 bg-white border-r-3 border-gray-300">
-        <div className="p-6 border-b-3 border-gray-300">
-          <h1 className="text-2xl font-bold">W.H.S.</h1>
+        <div className="p-3 border-b-3 border-gray-300">
+          <h1 className="flex justify-center text-center text-lg font-bold">
+            Whole Hospital Simulator
+          </h1>
         </div>
         <nav className="flex flex-col gap-1 mt-2">
           {urls.map((url, index) => (
@@ -30,7 +32,7 @@ export const AppSidebar: React.FC = () => {
                   "font-bold bg-blue-50 border-blue-600 text-blue-600",
               )}
             >
-              <url.iconElement data-icon="inline-start" />
+              <url.iconElement />
               <span className="">{url.name}</span>
             </a>
           ))}
