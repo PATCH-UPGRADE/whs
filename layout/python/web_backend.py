@@ -71,7 +71,7 @@ libvirt_connection_dependency = Annotated[libvirt.virConnect, Depends(get_libvir
                                    
 async def regenerate_layout(request:Request):
     '''
-    Backgrount task to update the layout after mutations to the ModelStore.
+    Background task to update the layout after mutations to the ModelStore and/or before a deployment is started.
     Scheduled as  asyncio.ensure_future(regenerate_layout()
     Only allows one regeneration to be pending at a time.
     '''
@@ -151,12 +151,12 @@ async def delete_device(device_id:str, request:Request, model_store:model_store_
     asyncio.ensure_future(regenerate_layout(request))
 
 @api_v1.post('/deploy')
-async def run_deployment(request:Request, layout:layout_dependency):
-    '''
-    Start a deployment of the current layout.
-    '''
+async def run_deployment(request: Request):
+    """Regenerate the current layout and then start its deployment."""
     async def deployment_task():
+        await regenerate_layout(request)
         async with state.deployment_lock:
+            layout = get_layout(request)
             ainjector = layout.ainjector
             deployable_filter = deployment.deployable_name_filter(
                 include=os.environ.get('CARTHAGE_DEPLOY_INCLUDE', '').split(),
