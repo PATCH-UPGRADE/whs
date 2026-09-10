@@ -13,6 +13,7 @@ from carthage_base import *
 from .images import WhsRouter
 from .models import ModelStore, VmImage
 from .dynamic_models import WhsNetworkModel
+from .topology import load_topology
 from pathlib import Path
 from typing import Optional
 
@@ -123,6 +124,8 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
         add_provider(persistent_seed_path, assignments_path)
         add_provider(MachineDependency(f'router.{domain}'))
         add_provider(InjectionKey(NetworkConfig), DeviceNetworkConfig, allow_multiple=True)
+        #: Define a WhsNetworkModel for each network of the current topology.
+        injector(load_topology, locals())
 
         @provides('bridge_net')
         class net(WhsNetworkModel):

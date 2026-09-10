@@ -7,11 +7,17 @@ from carthage.config.types import ConfigPath
 from carthage.modeling import CarthageLayout
 from . import layout
 from .models import ModelStore
+from .topology import current_topology
 from .web_backend import start_web_server, web_server_key, web_app_key, build_web_app, pcap_dir_key
 
 
 class ViperWhsConfig(ConfigSchema, prefix=""):
     pcap_dir: ConfigPath = "{vm_image_dir}/pcap"
+
+    #: The name of the topology (as named in topology.yml) whose networks
+    #: the layout defines.  Override in the carthage config to deploy a
+    #: different topology.
+    current_topology: str = 'Flat /24'
 
 
 @inject(injector=Injector)
@@ -27,6 +33,11 @@ def build_model_store(injector: Injector):
     state_dir = Path(config.state_dir)
     return ModelStore(model_dir=state_dir/"model_store")
 
+@inject(injector=Injector)
+def build_current_topology(injector: Injector) -> str:
+    '''The name of the topology whose networks the layout defines.'''
+    return injector(ConfigLayout).current_topology
+
 
 def _start_web_server(injector, loop):
     async def _start():
@@ -38,6 +49,7 @@ def _start_web_server(injector, loop):
 @inject(injector=Injector)
 def carthage_plugin(injector):
     injector.add_provider(InjectionKey(CarthageLayout), layout.build_layout)
+    injector.add_provider(current_topology, build_current_topology)
     injector.add_provider(web_app_key, build_web_app)
     injector.add_provider(InjectionKey(ModelStore), build_model_store)
     injector.add_provider(web_server_key, start_web_server)
