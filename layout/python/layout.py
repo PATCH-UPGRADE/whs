@@ -11,8 +11,8 @@ from carthage.modeling import NetworkConfigModel, injector_access
 from carthage.dependency_injection import inject, InjectionKey
 from carthage_base import *
 from .images import WhsRouter
-from .web_backend import web_server_key
 from .models import ModelStore, VmImage
+from .dynamic_models import WhsNetworkModel
 from pathlib import Path
 from typing import Optional
 
@@ -93,7 +93,6 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
     config = injector(ConfigLayout)
     model_store.load()
     model_store.validate_references()
-    asyncio.ensure_future(ainjector.get_instance_async(web_server_key))
 
     devices = model_store.devices.values()
     include_device_names = [d.name for d in devices if d.enabled_for_deployment]
@@ -111,7 +110,7 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
         add_provider(InjectionKey(NetworkConfig), DeviceNetworkConfig, allow_multiple=True)
 
         @provides('bridge_net')
-        class net(NetworkModel):
+        class net(WhsNetworkModel):
             bridge_name = 'whs-lab'
             podman_bridge_name = 'whs-lab'
             podman_unmanaged = True

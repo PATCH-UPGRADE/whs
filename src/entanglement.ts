@@ -2,10 +2,11 @@ import { SyncManager, SyncRegistry } from "entanglement-core";
 import {
   PersistentSynchronizable,
   SyncOwner,
-} from "entanglement-core/persistence";
+} from "entanglement-core/persistence.js";
+import registerCarthageEntanglement from "@/entanglement_schemas/carthage_entanglement";
 import registerWhsModels from "@/entanglement_schemas/whs_models";
 import { getCarthageApiUrl } from "@/fetcher";
-import { ContainerImage, Device, VmImage } from "@/models";
+import { ContainerImage, Device, VmImage, WhsEntangledNetwork } from "@/models";
 
 /**
  * Create props for entanglement-react's EntanglementProvider.
@@ -26,11 +27,15 @@ export async function createEntanglementProps(): Promise<{
 
   // Register WHS models schema
   registerWhsModels(registry);
+  // Register the carthage entanglement schema (carthage's DI/instrumentation
+  // models plus WhsEntangledNetwork)
+  registerCarthageEntanglement(registry);
   // Register the model classes so they can be constructed from WebSocket messages
   registry.register(SyncOwner);
   registry.register(Device);
   registry.register(VmImage);
   registry.register(ContainerImage);
+  registry.register(WhsEntangledNetwork);
 
   // Create WebSocket URL by modifying the HTTP URL's protocol
   const wsUrl = new URL(apiUrl);

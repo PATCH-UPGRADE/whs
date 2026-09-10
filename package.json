@@ -24,7 +24,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "entanglement-core": "^0.34.2",
-    "entanglement-react": "^0.2.2",
+    "entanglement-react": "^0.2.3",
     "lucide-react": "^1.7.0",
     "radix-ui": "^1.4.3",
     "react": "^19.2.4",

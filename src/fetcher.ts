@@ -37,13 +37,14 @@ export const getCarthageApiUrl = (): string => {
   return `${protocol}//${hostname}${portSuffix}/api/v1`;
 };
 
-const CARTHAGE_API_URL = getCarthageApiUrl();
-
+// Compute the API URL at call time rather than module load so that merely
+// importing this module (e.g. by a test with no live server configured) does
+// not throw when VITE_CARTHAGE_API_URL is unset.
 export const carthageFetcher = async <T>(
   endpointUrl: string,
   options?: RequestInit,
 ): Promise<T> => {
-  const response = await fetch(`${CARTHAGE_API_URL}${endpointUrl}`, {
+  const response = await fetch(`${getCarthageApiUrl()}${endpointUrl}`, {
     headers: {
       "Content-Type": "application/json",
       ...options?.headers,
@@ -65,7 +66,7 @@ export const carthageFetcherUpload = async <T>(
   endpointUrl: string,
   options?: RequestInit,
 ): Promise<T> => {
-  const response = await fetch(`${CARTHAGE_API_URL}${endpointUrl}`, {
+  const response = await fetch(`${getCarthageApiUrl()}${endpointUrl}`, {
     headers: {
       ...options?.headers,
     },
