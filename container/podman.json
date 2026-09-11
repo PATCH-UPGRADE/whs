@@ -13,6 +13,9 @@
   "ipv6_enabled": false,
   "internal": false,
   "dns_enabled": false,
+  "options": {
+    "metric": "100"
+  },
   "ipam_options": {
     "driver": "host-local"
   },
