@@ -6,14 +6,13 @@ from carthage.modeling import *
 from carthage.podman import *
 from carthage.oci import *
 from carthage.network import V4Config, persistent_random_mac, NetworkConfig
-from carthage.systemd import SystemdNetworkModelMixin
 from carthage.modeling import NetworkConfigModel, injector_access
 from carthage.dependency_injection import inject, InjectionKey
 from carthage_base import *
 from .images import WhsRouter
 from .models import ModelStore, VmImage
 from .dynamic_models import WhsNetworkModel
-from .topology import load_topology
+from .topology import RouterModel, load_topology
 from pathlib import Path
 from typing import Optional
 
@@ -86,21 +85,6 @@ class DeviceNetworkConfig(NetworkConfigModel):
         v4_config=build_v4_config, 
         net=injector_access('bridge_net'),
         )
-
-class RouterModel(DhcpRole, SystemdNetworkModelMixin, MachineModel):
-    '''
-    A router which may be deployed in different subnets across a network topology.
-    Provide the network being used & NetworkConfigModel.
-    '''
-    override_dependencies = True
-    add_provider(machine_implementation_key, dependency_quote(PodmanContainer))
-    add_provider(oci_container_image, injector_access(WhsRouter))
-    podman_options = [
-        '--cap-add=NET_ADMIN',
-        '--cap-add=NET_RAW',
-        '--sysctl', 'net.ipv4.ip_forward=1',
-    ]
-    dnsmasq_replace_resolv_conf = False
 
 
 @inject(model_store=ModelStore, ainjector=AsyncInjector)
