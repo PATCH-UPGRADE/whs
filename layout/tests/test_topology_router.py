@@ -18,6 +18,7 @@ The layout is built as a real ``class layout(CarthageLayout):`` body whose
 ``build_router``.  Production router integration (``build_routers`` in the
 plugin layout) exercises the same path.
 '''
+import importlib
 import ipaddress
 
 import pytest
@@ -262,4 +263,31 @@ def test_build_routers_registers_every_router(injector):
     floor_model = injections[InjectionKey('hospital_floor')][0]
     floor_model = getattr(floor_model, 'value', floor_model)
     assert default_model is floor_model
+
+
+def test_router_image_is_available_in_plugin_layout(ainjector, loop):
+    """The plugin layout makes the :class:`WhsRouter` image available.
+
+    The generated routers reference the image through
+    ``injector_access(WhsRouter)`` (keyed by its ``oci_image_tag``), and the
+    image is only registered for the layout when ``WhsRouter`` is imported
+    into the layout's modeling namespace.  Without that registration the
+    deployment fails at instantiation with ``No dependency for
+    InjectionKey(PodmanImage, oci_image_tag='localhost/whs-router')``.
+    """
+    from carthage.podman import PodmanImage
+    import conftest
+
+    layout = loop.run_until_complete(
+        ainjector.get_instance_async(CarthageLayout))
+    # The image class as the plugin layout sees it (the layout's modules
+    # live under the plugin package, not under 'python.*').
+    WhsRouter = importlib.import_module(
+        f'{conftest.layout_plugin.package.__name__}.images').WhsRouter
+    # _ready=False resolves the image model without building the image.
+    image = loop.run_until_complete(
+        layout.ainjector.get_instance_async(
+            InjectionKey(PodmanImage, oci_image_tag=WhsRouter.oci_image_tag,
+                         _ready=False)))
+    assert isinstance(image, WhsRouter)
 
