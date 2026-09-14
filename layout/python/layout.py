@@ -9,7 +9,6 @@ from carthage.network import V4Config, persistent_random_mac, NetworkConfig
 from carthage.modeling import NetworkConfigModel, injector_access
 from carthage.dependency_injection import inject, InjectionKey
 from carthage_base import *
-from .images import WhsRouter
 from .models import ModelStore, VmImage
 from .topology import build_routers, load_topology
 from pathlib import Path
@@ -102,6 +101,13 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
     class layout(CarthageLayout):
         layout_name = 'whs'
         domain = 'whs.local'
+        # Importing the image class into the modeling namespace registers the
+        # WhsRouter image (PodmanImage.__init_subclass__ marks its
+        # oci_image_tag key for propagation), so the image is built and
+        # available to the routers that reference it via
+        # injector_access(WhsRouter).  A module-level import alone does not
+        # register it: the name must be assigned in the class body.
+        from .images import WhsRouter
         add_provider(podman_container_host, LocalPodmanContainerHost)
         add_provider(persistent_seed_path, assignments_path)
         add_provider(InjectionKey(NetworkConfig), DeviceNetworkConfig, allow_multiple=True)
