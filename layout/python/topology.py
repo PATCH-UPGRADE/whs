@@ -188,6 +188,12 @@ def load_topology(topology_locals: dict, *, injector: Injector):
                 domains='whs.local',
             )
             podman_unmanaged = True
+            #: The unmanaged podman network binds to a pre-existing bridge, and
+            #: the qemu side (``BridgeNetwork``) plugs VM vNICS into a bridge of
+            #: its own.  Point both at the same device — named for the network —
+            #: so podman and qemu agree on the same network identity.
+            bridge_name = name
+            podman_bridge_name = name
 
         if name == default_network:
             # Non-decorator form (see modeling docs): the model is also
