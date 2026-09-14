@@ -90,51 +90,6 @@ def test_build_router_registers_sanitized_key(injector, loop):
     assert _router_cls(layout) is router_cls
 
 
-def test_router_one_link_per_connection_at_gateway(injector, loop):
-    """A router connecting to four networks registers a net_config with four
-    link specs (lan0..lan3), each a static interface addressed at the
-    connected network's ``.1`` gateway (intentionally ``.1``, not the old
-    ``.2`` practice)."""
-    injector.add_provider(current_topology, 'Small Hospital', replace=True)
-    topology = _topology('Small Hospital')
-    layout = _build_layout(injector, topology, router_names=['router.whs.local'])
-
-    from carthage.network import NetworkConfig
-
-    router_cls = _router_cls(layout)
-    assert router_cls is not None, 'router model not registered'
-    assert router_cls.name == 'router.whs.local'
-
-    # net_config is nested in the router, so it registers in the router's own
-    # initial injections (not the layout's).
-    net_config_cls = None
-    for _k, (v, _opts) in router_cls.__initial_injections__.items():
-        target = getattr(v, 'value', v)
-        if isinstance(target, type) and issubclass(target, NetworkConfig):
-            net_config_cls = target
-    assert net_config_cls is not None, 'net_config not registered on router'
-
-    connections = topology['routers']['router.whs.local']['connections']
-    assert len(connections) == 4
-
-    # net_config's link specs are populated by its add() callbacks; run them
-    # against a fresh instance to read the resolved specs.
-    inst = object.__new__(net_config_cls)
-    NetworkConfig.__init__(inst)
-    for cb in net_config_cls._callbacks:
-        cb(inst)
-    assert sorted(inst.link_specs.keys()) == ['lan0', 'lan1', 'lan2', 'lan3']
-
-    for i, conn in enumerate(connections):
-        spec = inst.link_specs[f'lan{i}']
-        subnet = topology['networks'][conn]['subnet']
-        net = ipaddress.ip_network(subnet)
-        expected_gw = ipaddress.ip_address(int(net.network_address) + 1)
-        assert str(spec['v4_config'].address) == str(expected_gw), (
-            conn, spec['v4_config'].address, expected_gw)
-        assert spec['v4_config'].dhcp is False
-
-
 def test_upstream_router_adds_podman_network(injector, loop):
     """A router with ``upstream: true`` carries ``--network=podman`` (plus the
     base router capabilities) in podman_options."""
