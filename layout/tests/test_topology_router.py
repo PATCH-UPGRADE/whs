@@ -7,18 +7,27 @@ networks produces one NetworkLink per connection, with primary links at the
 gateway and transit links using a pool or explicit address. ``upstream: true``
 adds the default podman network attachment.
 
+They also cover the topology's ``default_network``: ``load_topology``
+registers it as an alias of that network's model, and the alias resolves to
+the same :class:`carthage.network.Network` instance as the network's own name
+at runtime — which is what lets device network configs attach to the
+topology's default network without naming it.
+
 The layout is built as a real ``class layout(CarthageLayout):`` body whose
-``locals()`` (a ``ModelingNamespace``) is handed to ``load_topology`` /
-``build_router``. Production router integration remains future work.
+``locals()`` (a ``ModelingNamespace``) is handed to ``load_topology`` /\
+``build_router``.  Production router integration (``build_routers`` in the
+plugin layout) exercises the same path.
 '''
 import ipaddress
 
 import pytest
 
+from carthage.dependency_injection import InjectionKey
 from carthage.modeling import CarthageLayout
 from python.topology import (
     RouterModel,
     build_router,
+    build_routers,
     current_topology,
     load_topology,
     load_topologies,
@@ -73,6 +82,7 @@ def test_build_router_registers_sanitized_key(injector, loop):
         router = build_router(
             topology['routers'], 'router.whs.local', ns, injector=injector)
         captured['router'] = router
+        captured['whs_lab'] = ns['whs_lab']
         captured['keys'] = [k for k in ns.keys() if not k.startswith('_')]
 
     class layout(CarthageLayout):
@@ -197,3 +207,59 @@ def test_build_router_unknown_network_raises(injector):
     msg = str(exc.value)
     assert 'does_not_exist' in msg
     assert 'router.whs.local' in msg
+
+
+def test_default_network_alias_resolves_to_same_network(injector):
+    """The topology's default network model is also injectable under the
+    fixed ``default_network`` key (via :func:`provides`), so a link using
+    ``net=injector_access('default_network')`` — as in the layout's
+    :class:`DeviceNetworkConfig` — attaches to the topology's default
+    network: the same model the router's primary link sits on."""
+    injector.add_provider(current_topology, 'Flat /24', replace=True)
+
+    def _build(ns):
+        load_topology(ns, injector=injector)
+
+    class layout(CarthageLayout):
+        layout_name = 'whs'
+        domain = 'whs.local'
+        _build(locals())
+
+    injections = layout.__initial_injections__
+    default_model = injections[InjectionKey('default_network')][0]
+    default_model = getattr(default_model, 'value', default_model)
+    lab_model = injections[InjectionKey('whs_lab')][0]
+    lab_model = getattr(lab_model, 'value', lab_model)
+    # One model, two keys — not a second, parallel network.
+    assert default_model is lab_model
+
+
+def test_build_routers_registers_every_router(injector):
+    """``build_routers`` registers a RouterModel for every entry in the
+    topology's ``routers`` mapping, and the default network's model is also
+    injectable under the fixed ``default_network`` key (via :func:`provides`)."""
+    injector.add_provider(current_topology, 'Small Hospital', replace=True)
+
+    def _build(ns):
+        load_topology(ns, injector=injector)
+        build_routers(ns, injector=injector)
+
+    class layout(CarthageLayout):
+        layout_name = 'whs'
+        domain = 'whs.local'
+        _build(locals())
+
+    injections = layout.__initial_injections__
+    for key in ('router_whs_local', 'wifi_whs_local'):
+        entry = injections.get(InjectionKey(key))
+        assert entry is not None, [k for k in injections]
+        model = getattr(entry[0], 'value', entry[0])
+        assert issubclass(model, RouterModel)
+    # The default network's model is known to the injector under the fixed
+    # ``default_network`` key and is the same class as its own entry.
+    default_model = injections[InjectionKey('default_network')][0]
+    default_model = getattr(default_model, 'value', default_model)
+    floor_model = injections[InjectionKey('hospital_floor')][0]
+    floor_model = getattr(floor_model, 'value', floor_model)
+    assert default_model is floor_model
+
