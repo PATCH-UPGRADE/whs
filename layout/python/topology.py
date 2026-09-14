@@ -14,6 +14,7 @@ selected topology.
 '''
 from __future__ import annotations
 
+import dataclasses
 import ipaddress
 from typing import TYPE_CHECKING
 
@@ -124,6 +125,22 @@ def _dhc_pool(subnet) -> tuple[str, str]:
     return (str(low), str(high))
 
 
+def _podman_v4_config(v4_config: V4Config) -> V4Config:
+    '''The network's *v4_config* as the podman network should see it.
+
+    Identical to *v4_config* except ``dhcp`` is False.  VMs plug into the
+    bridge and get addresses from the router's DHCP server, but podman
+    containers are handed addresses from the pool by the network's
+    static IPAM — a podman network created with the DHCP ipam driver
+    needs the netavark DHCP proxy socket, which is not present on the
+    deployment host.  Carthage merges this into the network's
+    ``v4_config`` when building the podman network (the merge only
+    fills unset attributes, so the explicit ``dhcp=False`` is what the
+    podman network keeps and everything else is shared).
+    '''
+    return dataclasses.replace(v4_config, dhcp=False)
+
+
 def load_topologies(plugin: CarthagePlugin) -> list[dict]:
     '''Read the topology definitions from the plugin's topology.yml.'''
     path: Path = plugin.resource_dir / 'topology.yml'
@@ -177,16 +194,23 @@ def load_topology(topology_locals: dict, *, injector: Injector):
         net = ipaddress.ip_network(subnet)  # fail early on a bad subnet
         gateway = _first_usable(subnet)
         low, high = _dhc_pool(subnet)
+        network_config = V4Config(
+            network=subnet,
+            dhcp=True,
+            gateway=gateway,
+            pool=(low, high),
+            dns_servers=(gateway,),
+            domains='whs.local',
+        )
         @dynamic_name(name)
         class net(WhsNetworkModel):
-            v4_config = V4Config(
-                network=subnet,
-                dhcp=True,
-                gateway=gateway,
-                pool=(low, high),
-                dns_servers=(gateway,),
-                domains='whs.local',
-            )
+            v4_config = network_config
+            #: The network's v4_config as the podman network should see it:
+            #: identical except ``dhcp=False``, so podman creates the network
+            #: with static IPAM (containers get pool addresses) instead of the
+            #: DHCP ipam driver, which needs a netavark DHCP proxy socket.  VMs
+            #: still get addresses from the router's DHCP server.
+            podman_v4_config = _podman_v4_config(network_config)
             podman_unmanaged = True
             #: The unmanaged podman network binds to a pre-existing bridge, and
             #: the qemu side (``BridgeNetwork``) plugs VM vNICS into a bridge of
