@@ -7,15 +7,14 @@ router connects).  The topology selected through the
 routers the layout gets.
 
 :func:`load_topology` and :func:`build_router` are both called from inside a
-``CarthageLayout`` class body as ``injector(fn, locals())``; because the
-``locals()`` of a modeling class body is a ``ModelingNamespace``, assigning
-the ``@dynamic_name``-decorated class into it registers a model for each
-network (or router) of the selected topology.
+``CarthageLayout`` class body as ``injector(fn, locals())``; assigning the
+``@dynamic_name``-decorated class into the layout's
+``ModelingNamespace`` registers a model for each network (or router) of the
+selected topology.
 '''
 from __future__ import annotations
 
 import ipaddress
-import types
 from typing import TYPE_CHECKING
 
 import yaml
@@ -25,6 +24,7 @@ from carthage.dependency_injection import (
     Injector,
     dependency_quote,
     inject,
+    inject_autokwargs,
 )
 from carthage.modeling import (
     MachineModel,
@@ -33,7 +33,7 @@ from carthage.modeling import (
     injector_access,
     machine_implementation_key,
 )
-from carthage.network import V4Config, persistent_random_mac
+from carthage.network import V4Config, address_within_network, persistent_random_mac
 from carthage.oci import oci_container_image
 from carthage.podman import PodmanContainer
 from carthage.plugins import CarthagePlugin
@@ -60,6 +60,11 @@ class RouterModel(DhcpRole, SystemdNetworkModelMixin, MachineModel):
     :func:`build_router`.  It runs DHCP (via :class:`DhcpRole`), renders its
     interfaces with systemd-networkd, and is deployed as a Podman container
     using the :class:`WhsRouter` image.
+
+    Subclasses set :attr:`router_connections` to the topology's
+    ``connections`` mapping (network name -> options with a ``role`` of
+    ``primary`` or ``transit``); the nested :class:`net_config` turns it into
+    one link per network.
     '''
     override_dependencies = True
     add_provider(machine_implementation_key, dependency_quote(PodmanContainer))
@@ -70,6 +75,33 @@ class RouterModel(DhcpRole, SystemdNetworkModelMixin, MachineModel):
         '--sysctl', 'net.ipv4.ip_forward=1',
     ]
     dnsmasq_replace_resolv_conf = False
+    #: The topology's connections for this router: network name -> options
+    #: (``role``, optional ``address``).  Empty for hand-written routers.
+    router_connections: dict = {}
+
+    @inject_autokwargs(connections=InjectionKey('router_connections'))
+    class net_config(NetworkConfigModel):
+        '''One link per network in the router's :attr:`router_connections`.
+
+        The connections mapping is a provider on the enclosing router model,
+        so it is injected here and the links are built in ``__init__`` —
+        the interface count is variable, so the class body cannot hold the
+        ``add()`` calls.  ``net`` and the primary-link address resolve
+        against the live network instance, so they stay deferred.
+        '''
+
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            for i, (conn, options) in enumerate(self.connections.items()):
+                address = options.get('address')
+                if address is None and options['role'] == 'primary':
+                    address = address_within_network(1)
+                self.add(
+                    f'lan{i}',
+                    mac=persistent_random_mac,
+                    net=InjectionKey(conn),
+                    v4_config=V4Config(address=address, dhcp=False, dns_servers=()),
+                )
 
 
 def _first_usable(subnet) -> str:
@@ -171,7 +203,10 @@ def build_router(topology_router_dict: dict, name: str,
     The generated class is registered in *topology_locals* under the router
     name with dots replaced by underscores (e.g. ``router_whs_local``), so it
     is instantiated as a member of the layout and is findable by
-    ``MachineDependency(name)`` (the model's ``name`` is the FQDN).
+    ``MachineDependency(name)`` (the model's ``name`` is the FQDN).  The
+    connections mapping itself is stored on the model as
+    :attr:`RouterModel.router_connections`, so a router instance can see its
+    own topology.
     '''
     router_def = topology_router_dict[name]
     connections = router_def['connections']
@@ -193,45 +228,18 @@ def build_router(topology_router_dict: dict, name: str,
     router_name = name
     local_key = name.replace('.', '_')
 
-    # The router's NetworkConfigModel needs one add() per connected network,
-    # which is a variable number.  A class body cannot hold a variable number
-    # of add() calls, so net_config is built with types.new_class, whose
-    # exec_body runs against a ModelingNamespace where `add` resolves as a
-    # modelmethod (registering one deferred callback per interface).
-    def net_config_body(namespace):
-        for i, (conn, options) in enumerate(connections.items()):
-            interface = f'lan{i}'
-            # load_topology stored an injector_access wrapper under each
-            # network name; its .target is the network model class, whose
-            # _v4_config holds the resolved subnet and gateway.
-            net_model = topology_locals[conn]
-            target = getattr(net_model, 'target', net_model)
-            v4 = target._v4_config
-            gateway = str(v4.gateway) if v4.gateway else _first_usable(v4.network)
-            address = options.get('address')
-            if address is None and options['role'] == 'primary':
-                address = gateway
-            namespace['add'](
-                interface,
-                mac=persistent_random_mac,
-                net=injector_access(conn),
-                v4_config=V4Config(address=address, dhcp=False, dns_servers=()),
-            )
+    # The interface count is variable (one link per connection), so
+    # RouterModel.net_config builds its links in __init__ from the
+    # injected router_connections provider; the router subclass only
+    # supplies the topology data as a class attribute.
+    class router(RouterModel):
+        name = router_name
+        podman_options = podman_opts
+        router_connections = connections
+    # Built outside a modeling class body, so @dynamic_name would leave a
+    # decorator wrapper behind; rename the class directly instead.
+    router.__name__ = local_key
+    router.__qualname__ = local_key
 
-    # The router model is also built with types.new_class so its body can
-    # nest the dynamically built net_config.  Nesting (assigning net_config
-    # into the router's own ModelingNamespace) is what registers the
-    # NetworkConfig in the router's to_inject; a plain attribute set on the
-    # completed class would not.  Setting an attribute first also makes the
-    # router's namespace the active modeling context, so net_config's
-    # namespace correctly nests under the router.
-    def router_body(namespace):
-        namespace['name'] = router_name
-        namespace['podman_options'] = podman_opts
-        net_config = types.new_class(
-            'net_config', (NetworkConfigModel,), exec_body=net_config_body)
-        namespace['net_config'] = net_config
-
-    router = types.new_class(local_key, (RouterModel,), exec_body=router_body)
     topology_locals[local_key] = router
     return router
