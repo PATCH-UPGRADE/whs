@@ -150,7 +150,7 @@ def build_router(topology_router_dict: dict, name: str,
     Called from a ``CarthageLayout`` class body (which has already run
     ``injector(load_topology, locals())``) as::
 
-        injector(build_router, topology['routers'], locals())
+        injector(build_router, topology['routers'], name, locals())
 
     where *topology_router_dict* is the topology's ``routers`` mapping,
     *name* is the router's FQDN (e.g. ``router.whs.local``),
@@ -159,8 +159,12 @@ def build_router(topology_router_dict: dict, name: str,
 
     For each network the router connects (in the order listed in the
     topology), a ``NetworkConfigModel`` interface (``lan0``, ``lan1``, ...)
-    is added with a static address equal to that network's gateway (``.1``)
-    and a persistent random MAC.  When the router has ``upstream: true``, the
+    is added with a persistent random MAC. Connections map network names to
+    options with a ``role`` of ``primary`` or ``transit``. Primary connections
+    use the network's gateway (``.1``); transit connections inherit its address
+    pool unless an explicit ``address`` is supplied. Address validation is
+    deferred to layout integration, as is DHCP-service suppression on transit
+    interfaces. When the router has ``upstream: true``, the
     default Podman network is also attached (``--network=podman``); further
     upstream NAT/masquerading is intentionally out of scope for now.
 
@@ -170,7 +174,7 @@ def build_router(topology_router_dict: dict, name: str,
     ``MachineDependency(name)`` (the model's ``name`` is the FQDN).
     '''
     router_def = topology_router_dict[name]
-    connections = list(router_def['connections'])
+    connections = router_def['connections']
     for conn in connections:
         if conn not in topology_locals:
             raise ValueError(
@@ -195,7 +199,7 @@ def build_router(topology_router_dict: dict, name: str,
     # exec_body runs against a ModelingNamespace where `add` resolves as a
     # modelmethod (registering one deferred callback per interface).
     def net_config_body(namespace):
-        for i, conn in enumerate(connections):
+        for i, (conn, options) in enumerate(connections.items()):
             interface = f'lan{i}'
             # load_topology stored an injector_access wrapper under each
             # network name; its .target is the network model class, whose
@@ -204,11 +208,14 @@ def build_router(topology_router_dict: dict, name: str,
             target = getattr(net_model, 'target', net_model)
             v4 = target._v4_config
             gateway = str(v4.gateway) if v4.gateway else _first_usable(v4.network)
+            address = options.get('address')
+            if address is None and options['role'] == 'primary':
+                address = gateway
             namespace['add'](
                 interface,
                 mac=persistent_random_mac,
                 net=injector_access(conn),
-                v4_config=V4Config(address=gateway, dhcp=False, dns_servers=()),
+                v4_config=V4Config(address=address, dhcp=False, dns_servers=()),
             )
 
     # The router model is also built with types.new_class so its body can
