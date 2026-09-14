@@ -2,4 +2,4 @@
 Name=xi-*
 Kind=macvlan
 [Network]
-Bridge=whs-lab
+Bridge=whs_lab
