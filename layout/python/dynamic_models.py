@@ -6,8 +6,10 @@ from pydantic import BaseModel, Field
 
 from carthage import Machine
 from carthage.deployment import Deployable, DeploymentFailure, DeploymentResult
-from carthage.network import TechnologySpecificNetwork, this_network
+from carthage.dependency_injection import InjectionKey, inject_autokwargs
+from carthage.network import BridgeNetwork, TechnologySpecificNetwork, this_network
 from carthage.modeling import NetworkModel
+from carthage.podman import PodmanNetwork
 from carthage.entanglement import carthage_registry, entanglement_instrumentation
 from entanglement.interface import sync_property
 from entanglement.memory import StoreInSyncStoreMixin
@@ -108,6 +110,25 @@ def map_deployment_result(
 __all__ += ["map_deployment_result"]
 
 
+@inject_autokwargs(bridge=BridgeNetwork)
+class UnmanagedPodmanNetwork(PodmanNetwork):
+    """A podman network that requires its :class:`BridgeNetwork` to exist first.
+
+    ``PodmanNetwork`` in unmanaged mode registers the network with podman and
+    binds it to a pre-existing bridge (named by the model's
+    ``podman_bridge_name``); it does not create the bridge device.  Injecting
+    the :class:`BridgeNetwork` as a dependency makes the injector create and
+    bring up that bridge (``ip link add ... type bridge``) before this
+    network's ``do_create`` runs ``podman network create``.
+
+    The injected ``bridge`` instance is not used beyond being a ready
+    dependency; the body is deliberately empty.
+    """
+
+
+__all__ += ["UnmanagedPodmanNetwork"]
+
+
 class WhsNetworkModel(NetworkModel):
     """A WHS network.
 
@@ -115,7 +136,14 @@ class WhsNetworkModel(NetworkModel):
     ``CarthageLayout`` like any other network, and is instrumented (below) so
     that instantiating one stores a :class:`WhsEntangledNetwork` in the carthage
     entanglement registry.
+
+    Provides :class:`UnmanagedPodmanNetwork` as the technology-specific
+    network implementation, so every network created from this model (or a
+    subclass of it) brings up its bridge before registering the unmanaged
+    podman network.
     """
+
+    add_provider(InjectionKey(PodmanNetwork), UnmanagedPodmanNetwork)
 
 
 __all__ += ["WhsNetworkModel"]
