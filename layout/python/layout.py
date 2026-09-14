@@ -11,8 +11,7 @@ from carthage.dependency_injection import inject, InjectionKey
 from carthage_base import *
 from .images import WhsRouter
 from .models import ModelStore, VmImage
-from .dynamic_models import WhsNetworkModel
-from .topology import RouterModel, load_topology
+from .topology import build_routers, load_topology
 from pathlib import Path
 from typing import Optional
 
@@ -83,7 +82,7 @@ class DeviceNetworkConfig(NetworkConfigModel):
         mac=build_mac, 
         dns_name=build_dns_name, 
         v4_config=build_v4_config, 
-        net=injector_access('bridge_net'),
+        net=injector_access('default_network'),
         )
 
 
@@ -103,54 +102,13 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
     class layout(CarthageLayout):
         layout_name = 'whs'
         domain = 'whs.local'
-        from .images import WhsRouter
         add_provider(podman_container_host, LocalPodmanContainerHost)
         add_provider(persistent_seed_path, assignments_path)
-        add_provider(MachineDependency(f'router.{domain}'))
         add_provider(InjectionKey(NetworkConfig), DeviceNetworkConfig, allow_multiple=True)
         #: Define a WhsNetworkModel for each network of the current topology.
         injector(load_topology, locals())
-
-        @provides('bridge_net')
-        class net(WhsNetworkModel):
-            bridge_name = 'whs-lab'
-            podman_bridge_name = 'whs-lab'
-            podman_unmanaged = True
-            podman_container_dns = False
-            v4_config = V4Config(
-                network='10.20.100.0/24',
-                dhcp=True,
-                pool=('10.20.100.10', '10.20.100.200'),
-                domains='whs.local',
-                dns_servers=('10.20.100.2',),
-                gateway='10.20.100.2',
-            )
-
-            podman_v4_config = V4Config(dhcp=False)
-
-        class router(RouterModel):
-            name = 'router'
-            net = injector_access('bridge_net')
-
-            # Override to attach default podman network to primary WHS router
-            podman_options = [
-                '--cap-add=NET_ADMIN',
-                '--cap-add=NET_RAW',
-                '--sysctl', 'net.ipv4.ip_forward=1',
-                '--network=podman',
-            ]
-
-            class net_config(NetworkConfigModel):
-                add(
-                    'lan0', mac=persistent_random_mac,
-                    net=injector_access('bridge_net'),
-                    v4_config=V4Config(
-                        address='10.20.100.2',
-                        dhcp=False,
-                        dns_servers=(),
-                        masquerade=True,
-                    )
-                )
+        #: Register a RouterModel for each router of the current topology.
+        injector(build_routers, locals())
 
         def build_container(device):
             device_name = device.name

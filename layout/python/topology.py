@@ -32,6 +32,7 @@ from carthage.modeling import (
     dynamic_name,
     injector_access,
     machine_implementation_key,
+    provides,
 )
 from carthage.network import V4Config, address_within_network, persistent_random_mac
 from carthage.oci import oci_container_image
@@ -46,7 +47,10 @@ from .images import WhsRouter
 if TYPE_CHECKING:
     from pathlib import Path
 
-__all__ = ['current_topology', 'load_topologies', 'load_topology', 'build_router', 'RouterModel']
+__all__ = [
+    'current_topology', 'load_topologies', 'load_topology',
+    'build_router', 'build_routers', 'RouterModel',
+]
 
 #: The name of the topology whose networks the layout should define.
 current_topology = InjectionKey('current_topology')
@@ -142,6 +146,11 @@ def load_topology(topology_locals: dict, *, injector: Injector):
     Each network's ``v4_config`` carries the full DHCP-relevant configuration
     that the router's dnsmasq reads: the gateway (``.1``), a DHCP pool
     (``.10``-``.200``), the DNS server (the gateway), and the domain.
+
+    If the topology declares a ``default_network``, that network's model is
+    also made injectable under the fixed key ``default_network`` (via
+    :func:`provides`), so the layout (and e.g. device network configs) can
+    refer to the topology's default network without naming it.
     '''
     plugin = injector.get_instance(InjectionKey(CarthagePlugin, name='whs'))
     topology_name = injector.get_instance(current_topology)
@@ -154,6 +163,15 @@ def load_topology(topology_locals: dict, *, injector: Injector):
             f"available: {[t['name'] for t in topologies]}"
         ) from None
 
+    default_network = topology.get('default_network')
+    if default_network is not None and default_network not in topology['networks']:
+        raise ValueError(
+            f"Topology {topology_name!r} default_network "
+            f"{default_network!r} is not one of its networks: "
+            f"{sorted(topology['networks'])}"
+        )
+
+    models: dict[str, type] = {}
     for name, netdef in topology['networks'].items():
         subnet = netdef['subnet']
         net = ipaddress.ip_network(subnet)  # fail early on a bad subnet
@@ -171,7 +189,12 @@ def load_topology(topology_locals: dict, *, injector: Injector):
             )
             podman_unmanaged = True
 
+        if name == default_network:
+            # Non-decorator form (see modeling docs): the model is also
+            # known under the fixed key ``default_network``.
+            net = provides(InjectionKey('default_network'))(net)
         topology_locals[name] = net
+        models[name] = net
 
 
 @inject(injector=Injector)
@@ -243,3 +266,31 @@ def build_router(topology_router_dict: dict, name: str,
 
     topology_locals[local_key] = router
     return router
+
+
+@inject(injector=Injector)
+def build_routers(topology_locals: dict, *, injector: Injector) -> None:
+    '''Register a :class:`RouterModel` for every router in the current topology.
+
+    Called from a ``CarthageLayout`` class body (after
+    ``injector(load_topology, locals())``) as::
+
+        injector(build_routers, locals())
+
+    where *topology_locals* is the layout's ``ModelingNamespace``.  This
+    resolves the topology named by :data:`current_topology` and calls
+    :func:`build_router` for each of its ``routers`` entries, so the layout
+    picks up every topology router without naming them individually.
+    '''
+    plugin = injector.get_instance(InjectionKey(CarthagePlugin, name='whs'))
+    topology_name = injector.get_instance(current_topology)
+    topologies = load_topologies(plugin)
+    try:
+        topology = next(t for t in topologies if t['name'] == topology_name)
+    except StopIteration:
+        raise ValueError(
+            f"Unknown topology {topology_name!r}; "
+            f"available: {[t['name'] for t in topologies]}"
+        ) from None
+    for name in topology.get('routers', {}):
+        build_router(topology['routers'], name, topology_locals, injector=injector)
