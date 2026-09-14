@@ -1,15 +1,15 @@
 '''Integration tests for topology-driven router generation.
 
 These build a CarthageLayout through the real ``load_topology`` +
-``build_router`` path (the same functions the production layout body calls via
-``injector(fn, locals())``) and verify that a router with multiple connected
-networks produces one NetworkLink per connection, each addressed at the
-connected network's gateway (``.1``), and that ``upstream: true`` adds the
-default podman network attachment.
+``build_router`` path using the modeling class-body convention and verify that
+a router with multiple connected
+networks produces one NetworkLink per connection, with primary links at the
+gateway and transit links using a pool or explicit address. ``upstream: true``
+adds the default podman network attachment.
 
 The layout is built as a real ``class layout(CarthageLayout):`` body whose
 ``locals()`` (a ``ModelingNamespace``) is handed to ``load_topology`` /
-``build_router`` — exactly how the production ``build_layout`` does it.
+``build_router``. Production router integration remains future work.
 '''
 import ipaddress
 
@@ -160,15 +160,19 @@ def test_non_upstream_router_has_no_podman_network(injector, loop):
     assert '--cap-add=NET_ADMIN' in opts
 
 
-def test_router_resolves_networking_at_runtime(injector, loop):
+@pytest.mark.parametrize('transit_address', [None, '10.20.100.2'])
+def test_router_resolves_networking_at_runtime(injector, loop, transit_address):
     """End-to-end: instantiating the layout and resolving networking produces a
-    router whose NetworkLinks resolve to the connected topology networks, each
-    at its ``.1`` gateway, static, with a persistent MAC.  This exercises the
+    router whose primary links use the gateway and transit link uses an
+    inherited pool or explicit address, with persistent MACs. This exercises the
     full injector_access -> network model -> NetworkLink path at runtime."""
     injector.add_provider(current_topology, 'Small Hospital', replace=True)
     topology = _topology('Small Hospital')
 
     def _build(ns):
+        if transit_address is not None:
+            connections = topology['routers']['wifi.whs.local']['connections']
+            connections['hospital_floor']['address'] = transit_address
         load_topology(ns, injector=injector)
         for rname in topology['routers']:
             build_router(topology['routers'], rname, ns, injector=injector)
@@ -202,13 +206,32 @@ def test_router_resolves_networking_at_runtime(injector, loop):
         # A persistent MAC was assigned.
         assert link.mac
 
+    wifi_router = next(m for m in models
+                       if isinstance(m, RouterModel) and m.name == 'wifi.whs.local')
+    transit = wifi_router.network_links['lan0']
+    primary = wifi_router.network_links['lan1']
+    assert transit.net is router.network_links['lan0'].net
+    assert transit.v4_config.address == (
+        ipaddress.ip_address(transit_address) if transit_address else None)
+    assert transit.merged_v4_config.pool == transit.net.v4_config.pool
+    transit.net.assign_addresses()
+    address = transit.merged_v4_config.address
+    if transit_address is not None:
+        assert address == ipaddress.ip_address(transit_address)
+    else:
+        low, high = transit.merged_v4_config.pool
+        assert low <= address <= high
+    assert address != router.network_links['lan0'].merged_v4_config.address
+    assert primary.merged_v4_config.address == primary.net.v4_config.gateway
+    assert transit.mac
+
 
 def test_build_router_unknown_network_raises(injector):
     """A router connection to a network absent from the topology raises a
     ValueError naming the router and the missing network."""
     router_dict = {
         'router.whs.local': {
-            'connections': ['does_not_exist'],
+            'connections': {'does_not_exist': {'role': 'primary'}},
             'upstream': False,
         }
     }
