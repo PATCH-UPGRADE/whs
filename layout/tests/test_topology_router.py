@@ -291,3 +291,76 @@ def test_router_image_is_available_in_plugin_layout(ainjector, loop):
                          _ready=False)))
     assert isinstance(image, WhsRouter)
 
+
+def test_generate_populates_router_routes(injector, loop):
+    """Running ``generate`` on the Small Hospital layout computes each router
+    link's static routes from the resolved topology.
+
+    The main router is primary on hospital_floor, servers, radiology1 and
+    radiology2; the wifi router is transit on hospital_floor and primary on
+    wifi.  So:
+
+    * the main router's hospital_floor link gets a route to the ``wifi``
+      network (10.20.104.0/24) via the wifi router's (transit) address on
+      hospital_floor, and
+    * the wifi router's hospital_floor link gets a default route
+      (0.0.0.0/0) via the main router (primary on hospital_floor, .1).
+
+    This exercises the full ``build_routes`` -> ``extract_routes`` path: the
+    ``before=`` setup-task edge ordering the computation ahead of the
+    networkd render, and the primary-router identity check that decides
+    between a default route and per-network routes.
+    """
+    injector.add_provider(current_topology, 'Small Hospital', replace=True)
+    topology = _topology('Small Hospital')
+
+    def _build(ns):
+        load_topology(ns, injector=injector)
+        for rname in topology['routers']:
+            build_router(topology['routers'], rname, ns, injector=injector)
+
+    class layout(CarthageLayout):
+        layout_name = 'whs'
+        domain = 'whs.local'
+        _build(locals())
+
+    layout_instance = layout(injector=injector)
+    # Resolve networking to get handles to the router instances, then run
+    # generate() so the setup tasks (build_routes) populate link.routes.
+    # generate() reuses the resolve_networking cache, so the instances it
+    # makes ready are the ones we inspect here.
+    models = loop.run_until_complete(layout_instance.resolve_networking(force=True))
+    loop.run_until_complete(layout_instance.generate())
+
+    main_router = next(m for m in models if isinstance(m, RouterModel)
+                       and m.name == 'router.whs.local')
+    wifi_router = next(m for m in models if isinstance(m, RouterModel)
+                       and m.name == 'wifi.whs.local')
+
+    def link_on(router, net_name):
+        return next(l for l in router.network_links.values()
+                    if l.net.name == net_name)
+
+    wifi_net = ipaddress.ip_network('10.20.104.0/24')
+    default = ipaddress.IPv4Network('0.0.0.0/0')
+    floor_gw = ipaddress.ip_address('10.20.100.1')
+
+    # Main router: a route to the wifi network on its hospital_floor link.
+    floor_link = link_on(main_router, 'hospital_floor')
+    wifi_routes = [r for r in floor_link.routes if r[0] == wifi_net]
+    assert wifi_routes, (
+        f"expected a route to {wifi_net} on the main router's hospital_floor "
+        f"link; got {floor_link.routes!r}")
+    # ... via the wifi router's address on hospital_floor (its transit link).
+    wifi_floor_addr = link_on(wifi_router, 'hospital_floor').merged_v4_config.address
+    assert (wifi_net, wifi_floor_addr) in floor_link.routes
+
+    # Wifi router: a default route on its hospital_floor (transit) link, via
+    # the main router which is primary on hospital_floor.
+    wifi_floor = link_on(wifi_router, 'hospital_floor')
+    default_routes = [r for r in wifi_floor.routes if r[0] == default]
+    assert default_routes, (
+        f"expected a default route on the wifi router's hospital_floor "
+        f"link; got {wifi_floor.routes!r}")
+    assert (default, floor_gw) in wifi_floor.routes
+
