@@ -119,7 +119,10 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
         def build_container(device):
             device_name = device.name
             device_image = model_store.get_device_container_image(device)
-            device_dns_servers = device.dns_servers or ('10.20.100.2',)
+            # Fallback DNS server is the router (network gateway, .1).  This is
+            # hardcoded for now; it will be derived per-network once the
+            # DhcpRole update PPR lands.
+            device_dns_servers = device.dns_servers or ('10.20.100.1',)
             device_dns_options = [f'--dns={server}' for server in device_dns_servers]
 
             if device_image is None:

@@ -212,6 +212,12 @@ def load_topology(topology_locals: dict, *, injector: Injector):
             #: still get addresses from the router's DHCP server.
             podman_v4_config = _podman_v4_config(network_config)
             podman_unmanaged = True
+            #: Disable podman's built-in per-network DNS (aardvark).  In
+            #: unmanaged mode the network's gateway (10.x.x.1) is the router's
+            #: address, not a host address, so netavark cannot bind it and
+            #: container startup fails.  The router's dnsmasq is the DNS
+            #: server; containers get it via their per-device --dns option.
+            podman_container_dns = False
             #: The unmanaged podman network binds to a pre-existing bridge, and
             #: the qemu side (``BridgeNetwork``) plugs VM vNICS into a bridge of
             #: its own.  Point both at the same device — named for the network —
