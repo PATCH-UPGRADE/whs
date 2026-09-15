@@ -27,15 +27,21 @@ from carthage.dependency_injection import (
     inject,
     inject_autokwargs,
 )
+from carthage import setup_task
 from carthage.modeling import (
     MachineModel,
     NetworkConfigModel,
+    NetworkModel,
     dynamic_name,
     injector_access,
     machine_implementation_key,
     provides,
 )
-from carthage.network import V4Config, address_within_network, persistent_random_mac
+from carthage.network import (
+    V4Config,
+    address_within_network,
+    persistent_random_mac,
+)
 from carthage.oci import oci_container_image
 from carthage.podman import PodmanContainer
 from carthage.plugins import CarthagePlugin
@@ -83,6 +89,31 @@ class RouterModel(DhcpRole, SystemdNetworkModelMixin, MachineModel):
     #: The topology's connections for this router: network name -> options
     #: (``role``, optional ``address``).  Empty for hand-written routers.
     router_connections: dict = {}
+
+    @setup_task("build routes",
+                before=SystemdNetworkModelMixin.generate_network_config)
+    async def build_routes(self):
+        '''Compute the static routes for each of the router's links.
+
+        Runs before the systemd-networkd configuration is rendered, so
+        each :attr:`link.routes <carthage.network.NetworkLink.routes>`
+        is populated from the fully-resolved topology (every router and
+        its links exist; pool addresses are assigned by
+        :func:`extract_routes`).  The routes themselves are derived
+        state of the resolved graph — stored on the links only so the
+        templates can render them.
+        '''
+        for link in self.network_links.values():
+            link.routes = await extract_routes(link.net, [self])
+
+    @build_routes.invalidator()
+    def build_routes(self, last_run=None):
+        # Routes are derived state on in-memory links, which are rebuilt
+        # from scratch on every run; a persisted stamp would let a later
+        # run skip the computation, leaving routes unset for the render
+        # (and its hash) to read.  Always invalidated, so it always runs.
+        return False
+
 
     @inject_autokwargs(connections=InjectionKey('router_connections'))
     class net_config(NetworkConfigModel):
@@ -286,6 +317,21 @@ def build_router(topology_router_dict: dict, name: str,
 
     router_name = name
     local_key = name.replace('.', '_')
+    # If the router is the primary router of one of its networks, that
+    # network's model provides the ``primary_router`` key so that
+    # :func:`extract_routes` (working with instances, not models) can
+    # recognize the primary without any other marker.  The provider is an
+    # ``injector_access`` — pointing at the router under its name on the
+    # layout injector — rather than the router model itself: the model
+    # would otherwise be instantiated once per injector it is
+    # ``add_provider``ed on (the network's and the layout's), and we want
+    # a single shared instance.
+    for conn, options in connections.items():
+        if options['role'] == 'primary':
+            net = topology_locals[conn]
+            net.add_provider(
+                InjectionKey('primary_router'),
+                injector_access(InjectionKey(MachineModel, host=router_name)))
 
     # The interface count is variable (one link per connection), so
     # RouterModel.net_config builds its links in __init__ from the
@@ -330,3 +376,77 @@ def build_routers(topology_locals: dict, *, injector: Injector) -> None:
         ) from None
     for name in topology.get('routers', {}):
         build_router(topology['routers'], name, topology_locals, injector=injector)
+
+
+async def extract_routes(net: NetworkModel,
+                         exclude: list[MachineModel]) -> list[
+        tuple[ipaddress.IPv4Network, ipaddress.IPv4Address]]:
+    '''Extract the static routes of *net* from the resolved network models.
+
+    Called after the layout has been instantiated and its networking
+    resolved (the ``network_links`` dictionaries are populated and link
+    ``v4_config`` addresses have been assigned), e.g. as
+    ``await ainjector(extract_routes, net, exclude)``.
+
+    For every link of *net* whose machine is a :class:`RouterModel`
+    (links to anything else are ignored), the router's address on *net*
+    is the *destination address* for its routes.  If the router is the
+    primary router of *net* (see the ``primary_router`` provider installed
+    by :func:`build_router`), *net* gets a single default route through
+    it.  Otherwise, for each *other* network the router is linked to, a
+    route is recorded for that network: a route through the router's
+    address on *net* reaches that network.
+
+    :param net: The network whose routes are being extracted.
+    :param exclude: Routers to skip; no routes whose destination would
+        be one of them are recorded.
+
+    :return: A list of ``(destination, gateway)`` tuples: *destination*
+        is an :class:`ipaddress.IPv4Network` (``0.0.0.0/0`` for a default
+        route) and *gateway* is an :class:`ipaddress.IPv4Address` — the
+        router's address on *net*.  Each destination network appears at
+        most once; if *net* has two non-primary routers that both reach
+        the same network, the first one seen wins.
+    '''
+    routes: list[tuple[ipaddress.IPv4Network, ipaddress.IPv4Address]] = []
+    seen: set[ipaddress.IPv4Network] = set()
+    default_net = ipaddress.IPv4Network('0.0.0.0/0')
+    # ``net.network_links`` is a ``weakref.WeakSet`` — iteration order is
+    # arbitrary, so sort for a stable "first seen wins" result.
+    for link in sorted(net.network_links,
+                       key=lambda l: (l.machine.name, l.interface)):
+        machine = link.machine
+        if not isinstance(machine, RouterModel):
+            continue
+        if any(machine is excluded for excluded in exclude):
+            continue
+        address = link.merged_v4_config.address
+        if address is None and link.merged_v4_config.pool:
+            # Pool-assigned addresses are only set once the pool runs
+            # assignment; do that now.  It is idempotent — the
+            # render-time call in the network template re-asserts the
+            # same address via force_assignment.
+            net.assign_addresses(link)
+            address = link.merged_v4_config.address
+        if address is None:
+            continue
+        # ``build_router`` provides the network's ``primary_router`` key
+        # with an ``injector_access`` of the router instance, so this
+        # returns that same instance — the identity check is exact.
+        if (net.injector.get_instance(
+                InjectionKey('primary_router', _ready=False, _optional=True))
+                is machine):
+            if default_net not in seen:
+                seen.add(default_net)
+                routes.append((default_net, address))
+        else:
+            for other in machine.network_links.values():
+                if other.net is net:
+                    continue  # the link on this network itself
+                peer_net = other.net
+                cidr = peer_net.v4_config.network
+                if cidr is None or cidr in seen:
+                    continue
+                seen.add(cidr)
+                routes.append((cidr, address))
+    return routes
