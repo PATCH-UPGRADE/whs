@@ -145,3 +145,36 @@ export class WhsEntangledNetwork extends PersistentSynchronizable {
   // id of the injector that produced the WhsNetworkModel
   injector_id!: number;
 }
+
+// ============================================================================
+// EntangledRouter Model
+// ============================================================================
+
+/** One link of a router, flattened from the carthage ``NetworkLink``. */
+export interface EntangledRouterLink {
+  // The network name this link sits on
+  net: string;
+  // The link's MAC address
+  mac: string;
+  // The link's assigned IPv4 address (merged_v4_config.address); null until
+  // pool assignment runs
+  address: string | null;
+}
+
+/**
+ * A router as synchronized from the carthage entanglement registry.
+ *
+ * Deliberately denormalized (see layout/python/dynamic_models.py): one object
+ * per router carrying ``network_links`` — a map of interface name
+ * (``lan0``, ``lan1``, ...) to the link's network name, MAC, and assigned
+ * address.  Produced server-side by the carthage entanglement
+ * instrumentation whenever a RouterModel is produced by an injector.
+ * Belongs to the carthage.entanglement schema rather than whs_models.
+ */
+export class EntangledRouter extends PersistentSynchronizable {
+  // Primary key (set by backend schema registration): the router's FQDN
+  name!: string;
+
+  // interface name -> { net, mac, address }
+  network_links!: Record<string, EntangledRouterLink>;
+}

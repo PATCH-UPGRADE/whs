@@ -364,3 +364,60 @@ def test_generate_populates_router_routes(injector, loop):
         f"link; got {wifi_floor.routes!r}")
     assert (default, floor_gw) in wifi_floor.routes
 
+
+def test_router_is_instrumented_into_entangled_router(injector, loop, entanglement):
+    """The entanglement registry holds one :class:`EntangledRouter` per
+    router, and each recorded router's ``network_links`` covers exactly the
+    router's actual resolved links.
+
+    This compares the *instrumented* state (what ``sync_router`` /
+    ``store_router`` stored in the carthage registry) against the *actual*
+    resolved state (the router instances the layout produced) rather than
+    asserting on a fixed topology: rename the routers, networks, or
+    rearrange their connections in ``topology.yml`` and this still passes,
+    because both sides are read from the same resolved layout.  The link
+    *values* (net/mac/address) are not re-derived here — if the snapshot
+    copy were wrong we'd rather catch it at the source.
+    """
+    from carthage import AsyncInjector
+    from python.dynamic_models import EntangledRouter
+
+    injector.add_provider(current_topology, 'Small Hospital', replace=True)
+    topology = _topology('Small Hospital')
+
+    def _build(ns):
+        load_topology(ns, injector=injector)
+        for rname in topology['routers']:
+            build_router(topology['routers'], rname, ns, injector=injector)
+
+    class layout(CarthageLayout):
+        layout_name = 'whs'
+        domain = 'whs.local'
+        _build(locals())
+
+    layout_instance = layout(injector=injector)
+    loop.run_until_complete(layout_instance.resolve_networking(force=True))
+    # generate() runs the routers' setup tasks (build_routes), which is what
+    # re-syncs the resolved network_links into the registry.
+    loop.run_until_complete(layout_instance.generate())
+
+    # The actual routers, resolved from the layout's own injector subtree.
+    layout_ainjector = layout_instance.injector(AsyncInjector)
+    actual = {r.name: r for _k, r in
+              loop.run_until_complete(
+                  layout_ainjector.filter_instantiate_async(RouterModel,
+                                                            lambda k: True))}
+    recorded = {e.name: e for e in entanglement.all(EntangledRouter)}
+
+    # Every resolved router is in the registry, and vice versa (no orphan
+    # records).
+    assert set(recorded) == set(actual), (
+        f"recorded {sorted(recorded)} != actual {sorted(actual)}")
+
+    # Each recorded router's network_links covers exactly the router's
+    # actual resolved interfaces.
+    for name, router in actual.items():
+        assert set(recorded[name].network_links) == set(router.network_links), (
+            f"{name}: recorded {sorted(recorded[name].network_links)} != "
+            f"actual {sorted(router.network_links)}")
+
