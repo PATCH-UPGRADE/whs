@@ -6,7 +6,13 @@ import {
 import registerCarthageEntanglement from "@/entanglement_schemas/carthage_entanglement";
 import registerWhsModels from "@/entanglement_schemas/whs_models";
 import { getCarthageApiUrl } from "@/fetcher";
-import { ContainerImage, Device, VmImage, WhsEntangledNetwork } from "@/models";
+import {
+  ContainerImage,
+  Device,
+  EntangledRouter,
+  VmImage,
+  WhsEntangledNetwork,
+} from "@/models";
 
 /**
  * Create props for entanglement-react's EntanglementProvider.
@@ -36,6 +42,7 @@ export async function createEntanglementProps(): Promise<{
   registry.register(VmImage);
   registry.register(ContainerImage);
   registry.register(WhsEntangledNetwork);
+  registry.register(EntangledRouter);
 
   // Create WebSocket URL by modifying the HTTP URL's protocol
   const wsUrl = new URL(apiUrl);

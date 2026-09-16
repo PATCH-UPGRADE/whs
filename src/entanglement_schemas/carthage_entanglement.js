@@ -46,5 +46,10 @@ function register_schema(registry) {
     ["name"],
     ["name", "network", "injector_id", "_sync_owner"],
   );
+  registry._schemaItem(
+    "EntangledRouter",
+    ["name"],
+    ["name", "network_links", "_sync_owner"],
+  );
 }
 export default register_schema;
