@@ -1,4 +1,11 @@
-import type { Core, EdgeSingular, EventObject, NodeSingular } from "cytoscape";
+import type {
+  Core,
+  EdgeSingular,
+  ElementDefinition,
+  EventObject,
+  NodeSingular,
+} from "cytoscape";
+import type { EntangledRouter } from "@/models";
 
 class TopologyCanvasEngine {
   cy: Core;
@@ -73,4 +80,53 @@ class TopologyCanvasEngine {
   };
 }
 
-export default TopologyCanvasEngine;
+const buildCanvasElementsFromRouter = (
+  router: EntangledRouter | undefined,
+): ElementDefinition[] => {
+  if (!router) {
+    return [];
+  }
+
+  const links = Object.keys(router.network_links);
+  if (links.length === 0) {
+    return [];
+  }
+
+  const elements: ElementDefinition[] = [
+    {
+      data: {
+        id: router.name,
+        label: router.name,
+        type: "router",
+      },
+    },
+  ];
+
+  links.forEach((linkKey, _i) => {
+    const link = router.network_links[linkKey];
+
+    // router is the root node
+    elements.push({
+      data: {
+        id: link.net,
+        label: link.net,
+        type: "network",
+      },
+    });
+
+    elements.push({
+      data: {
+        id: `${link.net}-${link.mac}-${link.address}`,
+        source: router.name,
+        target: link.net,
+        label: link.address,
+        mac: link.mac,
+        address: link.address,
+      },
+    });
+  });
+
+  return elements;
+};
+
+export { buildCanvasElementsFromRouter, TopologyCanvasEngine };
