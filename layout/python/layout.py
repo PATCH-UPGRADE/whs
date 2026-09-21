@@ -191,4 +191,6 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
             elif device.type == 'bareMetal':
                 new_bare_metal = build_bare_metal(device)
 
-    return await ainjector(layout)
+    layout_inst = await ainjector(layout)
+    await layout_inst.generate()
+    return layout_inst
