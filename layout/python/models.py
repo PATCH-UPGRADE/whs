@@ -22,6 +22,22 @@ default_model_config = ConfigDict(
         validate_assignment=True,
     )
 
+class GlobalSettings(BaseModel):
+    '''Settings that are not tied to any individual model object.
+
+    Deliberately a plain :class:`~pydantic.BaseModel` rather than a
+    :class:`StoredBaseModel`: these settings are not synchronized as their
+    own entangled objects. Instead they are carried as a single field on
+    :class:`ModelStore` and persisted to ``settings.yml``.
+    '''
+    model_config = default_model_config
+
+    current_topology: str = Field(
+        description='Name of the topology (as named in topology.yml) whose networks the layout defines.',
+        default='Flat /24',
+    )
+
+
 class ModelStore(PydanticSyncStoreRegistry):
     model_config = default_model_config
 
@@ -30,6 +46,7 @@ class ModelStore(PydanticSyncStoreRegistry):
     devices = class_store_property('Device')
     pcaps = class_store_property('Pcap')
     model_dir: Path = Field(default=Path(__file__).with_name('models'))
+    settings: GlobalSettings = Field(default_factory=GlobalSettings)
 
     def _load_model_file(self, path: Path, model_class: type[ModelType]) -> dict[str, ModelType]:
         if not path.exists():
@@ -122,7 +139,22 @@ class ModelStore(PydanticSyncStoreRegistry):
         self.store_synchronize_multiple(self._load_model_file(self.model_dir / 'container_images.yml', ContainerImage))
         self.store_synchronize_multiple(self._load_model_file(self.model_dir / 'devices.yml', Device))
         self.store_synchronize_multiple(self._load_model_file(self.model_dir / 'pcaps.yml', Pcap))
+        self.settings = self._load_settings(self.model_dir / 'settings.yml')
         return self
+
+    def _load_settings(self, path: Path) -> GlobalSettings:
+        if not path.exists():
+            return GlobalSettings()
+
+        with path.open('r', encoding='utf-8') as f:
+            raw_data = yaml.safe_load(f)
+
+        if raw_data is None:
+            return GlobalSettings()
+        if not isinstance(raw_data, dict):
+            raise ValueError(f'Expected a mapping of settings in {path}')
+
+        return GlobalSettings.model_validate(raw_data)
 
     def save(self) -> 'ModelStore':
         '''Saves all models off to yaml'''
@@ -133,7 +165,17 @@ class ModelStore(PydanticSyncStoreRegistry):
         self._save_model_file(self.model_dir / 'container_images.yml', self.container_images)
         self._save_model_file(self.model_dir / 'devices.yml', self.devices)
         self._save_model_file(self.model_dir / 'pcaps.yml', self.pcaps)
+        self._save_settings(self.model_dir / 'settings.yml', self.settings)
         return self
+
+    def _save_settings(self, path: Path, settings: GlobalSettings) -> None:
+        with path.open('w', encoding='utf-8') as f:
+            yaml.safe_dump(
+                settings.model_dump(mode='json', by_alias=True),
+                f,
+                sort_keys=False,
+                default_flow_style=False,
+            )
 
     def export_yaml(self) -> str:
         self.validate_references()
@@ -141,7 +183,7 @@ class ModelStore(PydanticSyncStoreRegistry):
             self.model_dump(
                 mode='json',
                 context={'format': 'export', 'store': self},
-                include={'vm_images', 'devices', 'pcaps'},
+                include={'vm_images', 'devices', 'pcaps', 'settings'},
             ),
             sort_keys=False,
             default_flow_style=False,
@@ -153,6 +195,12 @@ class ModelStore(PydanticSyncStoreRegistry):
             return self
         if not isinstance(raw_data, dict):
             raise ValueError('Expected exported model store YAML to be a mapping')
+
+        settings = raw_data.get('settings')
+        if settings is not None:
+            if not isinstance(settings, dict):
+                raise ValueError('Expected settings to be a mapping')
+            self.settings = GlobalSettings.model_validate(settings)
 
         vm_images = raw_data.get('vm_images', {})
         if not isinstance(vm_images, dict):
@@ -249,6 +297,7 @@ __all__ = [
     'ContainerImage',
     'Device',
     'Pcap',
+    'GlobalSettings',
     'ModelStore',
 ]
 

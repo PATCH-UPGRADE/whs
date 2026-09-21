@@ -10,7 +10,7 @@ from carthage.modeling import NetworkConfigModel, injector_access
 from carthage.dependency_injection import inject, InjectionKey
 from carthage_base import *
 from .models import ModelStore, VmImage
-from .topology import build_routers, load_topology
+from .topology import build_routers, load_topology, current_topology
 from pathlib import Path
 from typing import Optional
 
@@ -86,10 +86,17 @@ class DeviceNetworkConfig(NetworkConfigModel):
 
 
 @inject(model_store=ModelStore, ainjector=AsyncInjector)
-async def build_layout(model_store, ainjector) -> CarthageLayout:
+async def build_layout(model_store, ainjector, *, load_model_store=True) -> CarthageLayout:
     injector = ainjector.injector
     config = injector(ConfigLayout)
-    model_store.load()
+    if load_model_store:
+        # Loading re-reads the persisted models, including settings.yml, so
+        # ``settings.current_topology`` reflects what the user saved.
+        model_store.load()
+    # Point the layout at the topology the user has selected.  When
+    # ``load_model_store`` is False the store is used as-is (e.g. a test that
+    # mutated ``settings`` in memory without persisting it).
+    ainjector.replace_provider(current_topology, model_store.settings.current_topology)
     model_store.validate_references()
 
     devices = model_store.devices.values()
