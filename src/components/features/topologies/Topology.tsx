@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import cytoscape, {
   type Core,
   type ElementDefinition,
@@ -16,6 +17,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { EntangledRouter, WhsEntangledNetwork } from "@/models";
+import { getCurrentTopology } from "./hooks";
 import {
   buildCanvasElementsFromRouter,
   TopologyCanvasEngine,
@@ -104,32 +106,22 @@ const createCytoscape = (
 };
 
 export const Topology = () => {
+  const {
+    data: topology,
+    isPending,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["currentTopology"],
+    queryFn: getCurrentTopology,
+  });
+  console.log("topology:", topology);
+
   const networks = useEntangledList(WhsEntangledNetwork);
   const network = useEntangledObject(networks[0]);
 
   const routers = useEntangledList(EntangledRouter);
   const router = useEntangledObject(routers[0]) as EntangledRouter;
-
-  // TODO: remove this when we have network_links working
-  if (router) {
-    router.network_links = {
-      lan0: {
-        net: "lan0name",
-        mac: "lan0mac",
-        address: "lan0address",
-      },
-      lan1: {
-        net: "lan1net",
-        mac: "lan1mac",
-        address: "lan1address",
-      },
-      wlan0: {
-        net: "wlan0name",
-        mac: "wlan0mac",
-        address: "wlan0address",
-      },
-    };
-  }
 
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<TopologyCanvasEngine>(null);
