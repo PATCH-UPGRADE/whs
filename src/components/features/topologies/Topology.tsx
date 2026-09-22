@@ -16,10 +16,10 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
-import { EntangledRouter, WhsEntangledNetwork } from "@/models";
+import { Device, EntangledRouter, WhsEntangledNetwork } from "@/models";
 import { getCurrentTopology } from "./hooks";
 import {
-  buildCanvasElementsFromRouter,
+  buildCytoscapeElements,
   TopologyCanvasEngine,
 } from "./TopologyCanvasEngine";
 
@@ -31,11 +31,15 @@ const NODE_STYLE = {
     color: "#000000",
     "text-valign": "center",
     "text-halign": "center",
-    "font-size": 2.5,
-    width: 10,
-    height: 10,
+    "font-size": 36,
     "text-outline-width": 0.0,
     "text-outline-color": "#000000",
+    shape: "rectangle",
+    "text-wrap": "wrap",
+    "text-max-width": "100px",
+    width: "label",
+    height: "label",
+    padding: "14px",
   },
 } as const;
 
@@ -50,23 +54,30 @@ const SELECTED_NODE_STYLE = {
 const GRABBED_NODE_STYLE = {
   selector: "node:grabbed",
   style: {
-    "overlay-padding": 2,
-    "overlay-opacity": 0.2,
+    "overlay-padding": 24,
+    "overlay-opacity": 0.25,
     "overlay-color": "#737373",
+  },
+} as const;
+
+const DISABLED_NODE_STYLE = {
+  selector: "node.disabled",
+  style: {
+    "background-color": "#a1a1aa",
   },
 } as const;
 
 const EDGE_STYLE = {
   selector: "edge",
   style: {
-    width: 1,
+    width: 4,
     "line-color": "#d6d3d1",
     "target-arrow-color": "#d6d3d1",
-    "target-arrow-shape": "triangle",
+    "target-arrow-shape": "none",
     "arrow-scale": 0.4,
     "curve-style": "bezier",
     label: "data(label)",
-    "font-size": 2,
+    "font-size": 20,
     color: "#000000",
     events: "no", // ignores mouse events prevents highlighting
   },
@@ -84,72 +95,80 @@ const createCytoscape = (
   container: HTMLDivElement,
   layoutName: LayoutOptions["name"],
   elements: ElementDefinition[],
+  router: EntangledRouter,
 ): Core => {
+  const roots = Object.values(router.network_links).map((l) => l.net);
+  roots.push("disabled"); // special node for disabled devices
+
   return cytoscape({
     container,
     elements,
+    roots,
     style: [
       NODE_STYLE,
       GRABBED_NODE_STYLE,
       SELECTED_NODE_STYLE,
+      DISABLED_NODE_STYLE,
       EDGE_STYLE,
       SELECTED_STYLE,
     ],
     layout: {
       name: layoutName,
-      // @ts-expect-error - animate will be ignored if missing on a layout
+      // @ts-expect-error - missing properties for a specific layout will be ignored
+      directed: true,
       animate: false,
-      padding: 30,
+      padding: 10,
       randomize: false,
     },
   });
 };
 
 export const Topology = () => {
-  const {
-    data: topology,
-    isPending,
-    isError,
-    error,
-  } = useQuery({
+  const { data: topology } = useQuery({
     queryKey: ["currentTopology"],
     queryFn: getCurrentTopology,
   });
-  console.log("topology:", topology);
 
   const networks = useEntangledList(WhsEntangledNetwork);
-  const network = useEntangledObject(networks[0]);
-
   const routers = useEntangledList(EntangledRouter);
+  const devices = useEntangledList(Device);
+
+  const _network = useEntangledObject(networks[0]);
   const router = useEntangledObject(routers[0]) as EntangledRouter;
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const cyRef = useRef<TopologyCanvasEngine>(null);
+  const engineRef = useRef<TopologyCanvasEngine>(null);
 
   const elements = useMemo(
-    () => buildCanvasElementsFromRouter(router),
-    [router, router?.network_links],
+    () =>
+      buildCytoscapeElements(engineRef.current, router, devices as Device[]),
+    [router, router?.network_links, devices],
   );
 
   useEffect(() => {
-    if (!containerRef.current) {
+    if (!containerRef.current || !router) {
       return;
     }
 
-    const cy = createCytoscape(containerRef.current, "concentric", elements);
+    const cy = createCytoscape(
+      containerRef.current,
+      "breadthfirst",
+      elements,
+      router,
+    );
     const engine = new TopologyCanvasEngine(cy);
-    cyRef.current = engine;
+    engineRef.current = engine;
 
     cy.json({ elements });
 
     return () => {
-      cyRef.current?.dispose();
-      cyRef.current = null;
+      engineRef.current?.dispose();
+      engineRef.current = null;
     };
-  }, [elements]);
+  }, [elements, router]);
 
   // const runLayout = (name: LayoutOptions["name"]) => {
-  //   cyRef.current?.cy
+  //   engineRef.current?.cy
   //     // @ts-expect-error - missing properties of one type will be ignored by others anyways
   //     .layout({ name, animate: false, fit: false, padding: 20 })
   //     .run();
@@ -166,14 +185,14 @@ export const Topology = () => {
             <SlashIcon />
           </BreadcrumbSeparator>
           <BreadcrumbItem>
-            <BreadcrumbPage>{network?.name}</BreadcrumbPage>
+            <BreadcrumbPage>{topology?.current_topology}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
       <div className="flex">
-        <Button className="" onClick={() => cyRef.current?.cy.fit()}>
-          Fit
+        <Button className="" onClick={() => engineRef.current?.cy.fit()}>
+          Fit Graph
         </Button>
         {/* <Button className="" onClick={() => runLayout("breadthfirst")}>
           Breadthfirst Layout

@@ -11,7 +11,7 @@ export const startDeploy = () =>
   });
 
 export const getCurrentTopology = () =>
-  carthageFetcher<TopologyStatusResponseStatus>("/current_topology");
+  carthageFetcher<{ current_topology: string }>("/current_topology");
 
 export const setCurrentTopology = (newName: string) =>
   carthageFetcher<null>("/current_topology", {

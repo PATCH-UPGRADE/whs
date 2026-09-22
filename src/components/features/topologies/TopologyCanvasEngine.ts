@@ -5,7 +5,7 @@ import type {
   EventObject,
   NodeSingular,
 } from "cytoscape";
-import type { EntangledRouter } from "@/models";
+import type { Device, EntangledRouter } from "@/models";
 
 class TopologyCanvasEngine {
   cy: Core;
@@ -80,32 +80,27 @@ class TopologyCanvasEngine {
   };
 }
 
-const buildCanvasElementsFromRouter = (
+const buildCytoscapeElements = (
+  engine: TopologyCanvasEngine | null,
   router: EntangledRouter | undefined,
+  devices: Device[] | undefined,
 ): ElementDefinition[] => {
-  if (!router) {
+  if (!engine?.cy || !router) {
     return [];
   }
 
-  const links = Object.keys(router.network_links);
-  if (links.length === 0) {
+  const networkLinks = Object.keys(router.network_links);
+  if (networkLinks.length === 0) {
     return [];
   }
 
-  const elements: ElementDefinition[] = [
-    {
-      data: {
-        id: router.name,
-        label: router.name,
-        type: "router",
-      },
-    },
-  ];
+  const elements: ElementDefinition[] = [];
+  const routerAddresses: string[] = [];
 
-  links.forEach((linkKey, _i) => {
+  networkLinks.forEach((linkKey) => {
     const link = router.network_links[linkKey];
 
-    // router is the root node
+    // tier 1 network link nodes
     elements.push({
       data: {
         id: link.net,
@@ -114,19 +109,64 @@ const buildCanvasElementsFromRouter = (
       },
     });
 
+    // network link edges
     elements.push({
       data: {
         id: `${link.net}-${link.mac}-${link.address}`,
-        source: router.name,
-        target: link.net,
-        label: link.address,
+        source: link.net,
+        target: router.name,
         mac: link.mac,
         address: link.address,
       },
     });
+
+    routerAddresses.push(link.address ?? "undefined");
+  });
+
+  // tier 2 router node
+  elements.push({
+    data: {
+      id: router.name,
+      label: `Router [${routerAddresses}]`,
+      type: "router",
+    },
+  });
+
+  if (devices && devices.length > 0) {
+    devices.forEach((device, i) => {
+      // tier 3 device nodes
+
+      elements.push({
+        data: {
+          id: device.id,
+          label: `${device.name} (${device.dhcp ? "DHCP" : "Static"})`,
+          type: "device",
+        },
+        classes: device.enabled_for_deployment ? "" : "disabled",
+      });
+
+      // device node edges
+      elements.push({
+        data: {
+          id: `${device.id}-${i}`,
+          source: device.enabled_for_deployment ? router.name : "disabled",
+          target: device.id,
+        },
+      });
+    });
+  }
+
+  // seperate Disabled Devices node
+  elements.push({
+    data: {
+      id: "disabled",
+      label: "Disabled Devices",
+      type: "network",
+    },
+    classes: "disabled",
   });
 
   return elements;
 };
 
-export { buildCanvasElementsFromRouter, TopologyCanvasEngine };
+export { buildCytoscapeElements, TopologyCanvasEngine };
