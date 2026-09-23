@@ -101,7 +101,7 @@ def load_topology(topology_locals: dict, *, injector: Injector):
 
     Each network's ``v4_config`` carries the full DHCP-relevant configuration
     that the router's dnsmasq reads: the gateway (``.1``), a DHCP pool
-    (``.10``-``.200``), the DNS server (the gateway), and the domain.
+    (``.10``-``.200``), the DNS server, and the domain.
 
     If the topology declares a ``default_network``, that network's model is
     also made injectable under the fixed key ``default_network`` (via
@@ -138,7 +138,7 @@ def load_topology(topology_locals: dict, *, injector: Injector):
             dhcp=True,
             gateway=gateway,
             pool=(low, high),
-            dns_servers=(gateway,),
+            dns_servers=('10.20.100.250',),
             domains='whs.local',
         )
         @dynamic_name(name)
@@ -154,8 +154,8 @@ def load_topology(topology_locals: dict, *, injector: Injector):
             #: Disable podman's built-in per-network DNS (aardvark).  In
             #: unmanaged mode the network's gateway (10.x.x.1) is the router's
             #: address, not a host address, so netavark cannot bind it and
-            #: container startup fails.  The router's dnsmasq is the DNS
-            #: server; containers get it via their per-device --dns option.
+            #: container startup fails.  Dnsmasq on the layout-wide DHCP server
+            #: is the DNS server.
             podman_container_dns = False
             #: The unmanaged podman network binds to a pre-existing bridge, and
             #: the qemu side (``BridgeNetwork``) plugs VM vNICS into a bridge of
@@ -219,6 +219,7 @@ def build_router(topology_router_dict: dict, name: str,
         '--cap-add=NET_ADMIN',
         '--cap-add=NET_RAW',
         '--sysctl', 'net.ipv4.ip_forward=1',
+        '--dns', '10.20.100.250',
     ]
     if upstream:
         podman_opts.append('--network=podman')
@@ -249,6 +250,8 @@ def build_router(topology_router_dict: dict, name: str,
         name = router_name
         podman_options = podman_opts
         router_connections = connections
+        relay_server = '10.20.100.250'
+        relay_networks = tuple(InjectionKey(conn) for conn, options in connections.items() if options['role'] == 'primary')
     # Built outside a modeling class body, so @dynamic_name would leave a
     # decorator wrapper behind; rename the class directly instead.
     router.__name__ = local_key

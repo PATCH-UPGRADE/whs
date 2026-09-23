@@ -6,11 +6,13 @@ from carthage.modeling import *
 from carthage.podman import *
 from carthage.oci import *
 from carthage.network import V4Config, persistent_random_mac, NetworkConfig
+from carthage.systemd import SystemdNetworkModelMixin
 from carthage.modeling import NetworkConfigModel, injector_access
 from carthage.dependency_injection import inject, InjectionKey
 from carthage_base import *
 from .models import ModelStore, VmImage
-from .topology import build_routers, load_topology, current_topology
+from .topology import build_routers, current_topology, load_topologies, load_topology
+
 from pathlib import Path
 from typing import Optional
 
@@ -97,6 +99,9 @@ async def build_layout(model_store, ainjector, *, load_model_store=True) -> Cart
     # ``load_model_store`` is False the store is used as-is (e.g. a test that
     # mutated ``settings`` in memory without persisting it).
     ainjector.replace_provider(current_topology, model_store.settings.current_topology)
+    plugin = injector.get_instance(InjectionKey(CarthagePlugin, name='whs'))
+    topology = next(t for t in load_topologies(plugin) if t['name'] == model_store.settings.current_topology)
+    served_network_keys = tuple(InjectionKey(name) for name in topology['networks'])
     model_store.validate_references()
 
     devices = model_store.devices.values()
@@ -120,16 +125,52 @@ async def build_layout(model_store, ainjector, *, load_model_store=True) -> Cart
         add_provider(InjectionKey(NetworkConfig), DeviceNetworkConfig, allow_multiple=True)
         #: Define a WhsNetworkModel for each network of the current topology.
         injector(load_topology, locals())
+
+        class dhcp_server(DhcpRole, SystemdNetworkModelMixin, MachineModel):
+            '''
+            Single source of truth DHCP server that all routers in the selected network topology relay towards
+            Not published as an entangled router 
+            '''
+            name = 'dhcp.whs.local'
+            add_provider(machine_implementation_key, dependency_quote(PodmanContainer))
+            add_provider(oci_container_image, injector_access(WhsRouter))
+            served_networks = served_network_keys
+
+            dnsmasq_replace_resolv_conf = False
+            podman_options = [
+                '--cap-add=NET_ADMIN',
+                '--cap-add=NET_RAW',
+                '--network=podman',
+            ]
+
+            class dhcp_customization(DhcpRole.dhcp_customization):
+                @setup_task('Expose dnsmasq on the lab interface', before=DhcpRole.dhcp_customization.restart_dnsmasq)
+                async def expose_dnsmasq_on_lan(self):
+                    async with self.filesystem_access() as fs:
+                        conf = Path(fs) / 'etc/dnsmasq.d/whs-listen.conf'
+                        conf.parent.mkdir(parents=True, exist_ok=True)
+                        conf.write_text('interface=lan0\n')
+
+            class net_config(NetworkConfigModel):
+                add(
+                    'lan0',
+                    mac=persistent_random_mac,
+                    net=injector_access('default_network'),
+                    v4_config=V4Config(
+                        address='10.20.100.250',
+                        dhcp=False,
+                        dns_servers=(),
+                    ),
+                )
+
         #: Register a RouterModel for each router of the current topology.
         injector(build_routers, locals())
 
         def build_container(device):
             device_name = device.name
             device_image = model_store.get_device_container_image(device)
-            # Fallback DNS server is the router (network gateway, .1).  This is
-            # hardcoded for now; it will be derived per-network once the
-            # DhcpRole update PPR lands.
-            device_dns_servers = device.dns_servers or ('10.20.100.1',)
+            # Fallback DNS server is the layout-wide DHCP server (10.20.100.250)
+            device_dns_servers = device.dns_servers or ('10.20.100.250',)
             device_dns_options = [f'--dns={server}' for server in device_dns_servers]
 
             if device_image is None:
