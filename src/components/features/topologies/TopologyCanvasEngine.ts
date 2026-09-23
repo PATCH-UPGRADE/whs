@@ -107,6 +107,7 @@ const buildCytoscapeElements = (
         label: link.net,
         type: "network",
       },
+      classes: "network",
     });
 
     // network link edges
@@ -130,6 +131,7 @@ const buildCytoscapeElements = (
       label: `Router [${routerAddresses}]`,
       type: "router",
     },
+    classes: "router",
   });
 
   if (devices && devices.length > 0) {
@@ -142,7 +144,7 @@ const buildCytoscapeElements = (
           label: `${device.name} (${device.dhcp ? "DHCP" : "Static"})`,
           type: "device",
         },
-        classes: device.enabled_for_deployment ? "" : "disabled",
+        classes: `device ${device.enabled_for_deployment ? "" : "disabled"}`,
       });
 
       // device node edges
@@ -163,7 +165,8 @@ const buildCytoscapeElements = (
       label: "Disabled Devices",
       type: "network",
     },
-    classes: "disabled",
+    classes: "message disabled",
+    selectable: false,
   });
 
   return elements;
