@@ -9,3 +9,12 @@ export const startDeploy = () =>
     method: "POST",
     body: "",
   });
+
+export const getCurrentTopology = () =>
+  carthageFetcher<{ current_topology: string }>("/current_topology");
+
+export const setCurrentTopology = (newName: string) =>
+  carthageFetcher<null>("/current_topology", {
+    method: "PUT",
+    body: `{ "payload": ${newName} }`,
+  });
