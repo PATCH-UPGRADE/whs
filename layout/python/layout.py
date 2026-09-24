@@ -166,6 +166,10 @@ async def build_layout(model_store, ainjector, *, load_model_store=True) -> Cart
         #: Register a RouterModel for each router of the current topology.
         injector(build_routers, locals())
 
+        add_provider(MachineDependency('dhcp.whs.local'))
+        for router_name in topology.get('routers', {}):
+            add_provider(MachineDependency(router_name))
+
         def build_container(device):
             device_name = device.name
             device_image = model_store.get_device_container_image(device)
