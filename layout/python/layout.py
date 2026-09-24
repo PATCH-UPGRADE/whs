@@ -10,9 +10,9 @@ from carthage.systemd import SystemdNetworkModelMixin
 from carthage.modeling import NetworkConfigModel, injector_access
 from carthage.dependency_injection import inject, InjectionKey
 from carthage_base import *
-from .images import WhsRouter
 from .models import ModelStore, VmImage
-from .dynamic_models import WhsNetworkModel
+from .topology import build_routers, current_topology, load_topologies, load_topology
+
 from pathlib import Path
 from typing import Optional
 
@@ -83,30 +83,25 @@ class DeviceNetworkConfig(NetworkConfigModel):
         mac=build_mac, 
         dns_name=build_dns_name, 
         v4_config=build_v4_config, 
-        net=injector_access('bridge_net'),
+        net=injector_access('default_network'),
         )
-
-class RouterModel(DhcpRole, SystemdNetworkModelMixin, MachineModel):
-    '''
-    A router which may be deployed in different subnets across a network topology.
-    Provide the network being used & NetworkConfigModel.
-    '''
-    override_dependencies = True
-    add_provider(machine_implementation_key, dependency_quote(PodmanContainer))
-    add_provider(oci_container_image, injector_access(WhsRouter))
-    podman_options = [
-        '--cap-add=NET_ADMIN',
-        '--cap-add=NET_RAW',
-        '--sysctl', 'net.ipv4.ip_forward=1',
-    ]
-    dnsmasq_replace_resolv_conf = False
 
 
 @inject(model_store=ModelStore, ainjector=AsyncInjector)
-async def build_layout(model_store, ainjector) -> CarthageLayout:
+async def build_layout(model_store, ainjector, *, load_model_store=True) -> CarthageLayout:
     injector = ainjector.injector
     config = injector(ConfigLayout)
-    model_store.load()
+    if load_model_store:
+        # Loading re-reads the persisted models, including settings.yml, so
+        # ``settings.current_topology`` reflects what the user saved.
+        model_store.load()
+    # Point the layout at the topology the user has selected.  When
+    # ``load_model_store`` is False the store is used as-is (e.g. a test that
+    # mutated ``settings`` in memory without persisting it).
+    ainjector.replace_provider(current_topology, model_store.settings.current_topology)
+    plugin = injector.get_instance(InjectionKey(CarthagePlugin, name='whs'))
+    topology = next(t for t in load_topologies(plugin) if t['name'] == model_store.settings.current_topology)
+    served_network_keys = tuple(InjectionKey(name) for name in topology['networks'])
     model_store.validate_references()
 
     devices = model_store.devices.values()
@@ -118,57 +113,64 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
     class layout(CarthageLayout):
         layout_name = 'whs'
         domain = 'whs.local'
+        # Importing the image class into the modeling namespace registers the
+        # WhsRouter image (PodmanImage.__init_subclass__ marks its
+        # oci_image_tag key for propagation), so the image is built and
+        # available to the routers that reference it via
+        # injector_access(WhsRouter).  A module-level import alone does not
+        # register it: the name must be assigned in the class body.
         from .images import WhsRouter
         add_provider(podman_container_host, LocalPodmanContainerHost)
         add_provider(persistent_seed_path, assignments_path)
-        add_provider(MachineDependency(f'router.{domain}'))
         add_provider(InjectionKey(NetworkConfig), DeviceNetworkConfig, allow_multiple=True)
+        #: Define a WhsNetworkModel for each network of the current topology.
+        injector(load_topology, locals())
 
-        @provides('bridge_net')
-        class net(WhsNetworkModel):
-            bridge_name = 'whs-lab'
-            podman_bridge_name = 'whs-lab'
-            podman_unmanaged = True
-            podman_container_dns = False
-            v4_config = V4Config(
-                network='10.20.100.0/24',
-                dhcp=True,
-                pool=('10.20.100.10', '10.20.100.200'),
-                domains='whs.local',
-                dns_servers=('10.20.100.2',),
-                gateway='10.20.100.2',
-            )
+        class dhcp_server(DhcpRole, SystemdNetworkModelMixin, MachineModel):
+            '''
+            Single source of truth DHCP server that all routers in the selected network topology relay towards
+            Not published as an entangled router 
+            '''
+            name = 'dhcp.whs.local'
+            add_provider(machine_implementation_key, dependency_quote(PodmanContainer))
+            add_provider(oci_container_image, injector_access(WhsRouter))
+            served_networks = served_network_keys
 
-            podman_v4_config = V4Config(dhcp=False)
-
-        class router(RouterModel):
-            name = 'router'
-            net = injector_access('bridge_net')
-
-            # Override to attach default podman network to primary WHS router
+            dnsmasq_replace_resolv_conf = False
             podman_options = [
                 '--cap-add=NET_ADMIN',
                 '--cap-add=NET_RAW',
-                '--sysctl', 'net.ipv4.ip_forward=1',
                 '--network=podman',
             ]
 
+            class dhcp_customization(DhcpRole.dhcp_customization):
+                @setup_task('Expose dnsmasq on the lab interface', before=DhcpRole.dhcp_customization.restart_dnsmasq)
+                async def expose_dnsmasq_on_lan(self):
+                    async with self.filesystem_access() as fs:
+                        conf = Path(fs) / 'etc/dnsmasq.d/whs-listen.conf'
+                        conf.parent.mkdir(parents=True, exist_ok=True)
+                        conf.write_text('interface=lan0\n')
+
             class net_config(NetworkConfigModel):
                 add(
-                    'lan0', mac=persistent_random_mac,
-                    net=injector_access('bridge_net'),
+                    'lan0',
+                    mac=persistent_random_mac,
+                    net=injector_access('default_network'),
                     v4_config=V4Config(
-                        address='10.20.100.2',
+                        address='10.20.100.250',
                         dhcp=False,
                         dns_servers=(),
-                        masquerade=True,
-                    )
+                    ),
                 )
+
+        #: Register a RouterModel for each router of the current topology.
+        injector(build_routers, locals())
 
         def build_container(device):
             device_name = device.name
             device_image = model_store.get_device_container_image(device)
-            device_dns_servers = device.dns_servers or ('10.20.100.2',)
+            # Fallback DNS server is the layout-wide DHCP server (10.20.100.250)
+            device_dns_servers = device.dns_servers or ('10.20.100.250',)
             device_dns_options = [f'--dns={server}' for server in device_dns_servers]
 
             if device_image is None:
@@ -237,4 +239,6 @@ async def build_layout(model_store, ainjector) -> CarthageLayout:
             elif device.type == 'bareMetal':
                 new_bare_metal = build_bare_metal(device)
 
-    return await ainjector(layout)
+    layout_inst = await ainjector(layout)
+    await layout_inst.generate()
+    return layout_inst

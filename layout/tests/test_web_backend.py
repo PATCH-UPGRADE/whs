@@ -190,3 +190,49 @@ devices:
     )
 
     assert imported_machine.name == "tester-import"
+
+
+def test_get_current_topology_returns_setting(app, model_store):
+    client = TestClient(app)
+
+    response = client.get("/api/v1/current_topology")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "current_topology": model_store.settings.current_topology
+    }
+
+
+def test_put_current_topology_updates_setting(app, model_store, monkeypatch):
+    def discard_background_task(coro):
+        coro.close()
+        return None
+
+    monkeypatch.setattr(web_backend.asyncio, "ensure_future", discard_background_task)
+    client = TestClient(app)
+
+    response = client.put(
+        "/api/v1/current_topology",
+        json={"current_topology": "Small Hospital"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"message": "Success"}
+    assert model_store.settings.current_topology == "Small Hospital"
+
+    get = client.get("/api/v1/current_topology")
+    assert get.status_code == 200
+    assert get.json() == {"current_topology": "Small Hospital"}
+
+
+def test_put_current_topology_rejects_missing_field(app, monkeypatch):
+    def discard_background_task(coro):
+        coro.close()
+        return None
+
+    monkeypatch.setattr(web_backend.asyncio, "ensure_future", discard_background_task)
+    client = TestClient(app)
+
+    response = client.put("/api/v1/current_topology", json={})
+
+    assert response.status_code == 422

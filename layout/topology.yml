@@ -1,0 +1,49 @@
+- name: 'Flat /24'
+  default_network: whs_lab
+  networks:
+    whs_lab:
+      subnet: 10.20.100.0/24
+  routers:
+    'router.whs.local':
+      connections:
+        whs_lab:
+          role: primary
+      upstream: true
+- name: 'Small Hospital'
+  default_network: hospital_floor
+  networks:
+    radiology1:
+      subnet: 10.20.101.0/24
+    radiology2:
+      subnet: 10.20.102.0/24
+    printers:
+      subnet: 10.20.103.0/24
+    wifi:
+      subnet: 10.20.104.0/24
+    cardiac:
+      subnet: 10.20.105.0/24
+    physical_security:
+      subnet: 10.20.106.0/24
+    hospital_floor:
+      subnet: 10.20.100.0/24
+    servers:
+      subnet: 10.20.107.0/24
+  routers:
+    'router.whs.local':
+      connections:
+        hospital_floor:
+          role: primary
+        servers:
+          role: primary
+        radiology1:
+          role: primary
+        radiology2:
+          role: primary
+      upstream: true
+    'wifi.whs.local':
+      connections:
+        hospital_floor:
+          role: transit
+        wifi:
+          role: primary
+      

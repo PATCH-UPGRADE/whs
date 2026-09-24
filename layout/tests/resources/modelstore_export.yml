@@ -73,3 +73,5 @@ devices:
     dns_servers: []
     container_image: nginx:latest
 pcaps: {}
+settings:
+  current_topology: Flat /24

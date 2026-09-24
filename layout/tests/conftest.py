@@ -55,6 +55,7 @@ layout_module = importlib.import_module(f"{plugin_package_name}.layout")
 models_module = importlib.import_module(f"{plugin_package_name}.models")
 web_backend = importlib.import_module(f"{plugin_package_name}.web_backend")
 dynamic_models = importlib.import_module(f"{plugin_package_name}.dynamic_models")
+topology_module = importlib.import_module(f"{plugin_package_name}.topology")
 ModelStore = models_module.ModelStore
 web_app_key = web_backend.web_app_key
 web_server_key = web_backend.web_server_key
@@ -63,6 +64,7 @@ sys.modules.setdefault("python.layout", layout_module)
 sys.modules.setdefault("python.models", models_module)
 sys.modules.setdefault("python.web_backend", web_backend)
 sys.modules.setdefault("python.dynamic_models", dynamic_models)
+sys.modules.setdefault("python.topology", topology_module)
 
 @pytest.fixture(scope="session")
 def loop():

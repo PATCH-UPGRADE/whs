@@ -5,6 +5,9 @@ from fastapi.testclient import TestClient
 import yaml
 
 from python.models import ContainerImage, Device, ModelStore, VmImage
+from python.topology import RouterModel, load_topologies
+from carthage.modeling import NetworkModel
+from carthage.dependency_injection import InjectionKey, AsyncInjector
 
 '''
 Unit tests that do not require setting up a fastapi server.
@@ -223,3 +226,78 @@ def test_upload_image_rejects_existing_non_pending_vm_image(app, model_store):
     )
 
     assert response.status_code == 400
+
+
+def _registered_by_key(layout):
+    '''Map InjectionKey -> generated model class for *layout*'s namespace.
+
+    Reads the layout *class*'s ``__initial_injections__`` the same way the
+    topology tests do (each entry maps an InjectionKey to ``(value,
+    options)`` where *value* is, or wraps via ``dependency_quote``, a generated
+    model class).  The *class* attribute is what ``load_topology`` /
+    ``build_routers`` populate; the instance keeps its own per-instance copy
+    for runtime keys, so ``type(layout)`` is read rather than *layout* itself.
+    Only entries whose value is a generated model class are included.
+    '''
+    models = {}
+    for key, (value, _opts) in type(layout).__initial_injections__.items():
+        target = getattr(value, "value", value)
+        if isinstance(target, type) and issubclass(target, (NetworkModel, RouterModel)):
+            models[key] = target
+    return models
+
+
+def _default_network_name(layout):
+    '''The name of the topology's default network as the layout registers it.
+
+    ``load_topology`` registers the default network's model under the fixed
+    ``default_network`` key (an alias of that network's own entry).  A network
+    model has no class-level ``name`` attribute; ``@dynamic_name`` renames the
+    class to the network's name, so the class's ``__name__`` is the name.
+    '''
+    model = _registered_by_key(layout)[InjectionKey('default_network')]
+    return model.__name__
+
+
+def test_build_layout_uses_current_topology_setting(loop, injector):
+    '''build_layout picks the topology from model_store.settings.current_topology.
+
+    The user selects a topology by changing the model store's settings and
+    calling build_layout; the resulting layout uses that topology.  Both
+    topologies in topology.yml are covered: the default 'Flat /24' and
+    'Small Hospital'.
+
+    This drives the real build_layout (via the layout provider the plugin
+    registers) and reads the layout's default network back, so it verifies the
+    build_layout -> load_topology -> build_routers path without deploying
+    anything.  The default network's *identity* is what's checked (not every
+    network's) so the test stays stable as topology.yml's networks change.
+
+    ``build_layout`` is called directly with ``load_model_store=False`` (via
+    ``ainjector(build_layout, ...)``) rather than through the injector's cached
+    layout instance, so the in-memory setting is used without having to persist
+    it, and each build reflects the current selection rather than a reused
+    cached layout.  The layout's own injector is closed afterwards, as a
+    directly-built layout claims one that the base injector would not tear down
+    on its own.
+    '''
+    from python.layout import build_layout
+    import conftest
+
+    topologies = {t["name"]: t for t in load_topologies(conftest.layout_plugin)}
+    ainjector = AsyncInjector(injector)
+
+    for topology_name in ("Flat /24", "Small Hospital"):
+        # Select the topology by mutating the model store, as the user would.
+        model_store = injector.get_instance(InjectionKey(ModelStore))
+        model_store.settings.current_topology = topology_name
+
+        layout = loop.run_until_complete(
+            ainjector(build_layout, load_model_store=False))
+
+        try:
+            # The layout must use the selected topology's default network.
+            assert _default_network_name(layout) == topologies[topology_name]["default_network"], (
+                f"{topology_name}: default network")
+        finally:
+            layout.injector.close()

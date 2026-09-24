@@ -15,7 +15,7 @@ import libvirt
 import yaml
 from fastapi import FastAPI, APIRouter, Depends, Form, HTTPException, Request, File, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from starlette.requests import HTTPConnection
 from carthage import (
     AsyncInjector,
@@ -190,6 +190,24 @@ async def export_models(model_store:model_store_dependency) -> Response:
         media_type='application/x-yaml',
         headers={'Content-Disposition': 'attachment; filename="whs-models.yaml"'},
     )
+
+class CurrentTopology(BaseModel):
+    current_topology: str
+
+@api_v1.get('/current_topology')
+async def get_current_topology(model_store:model_store_dependency) -> CurrentTopology:
+    return CurrentTopology(current_topology=model_store.settings.current_topology)
+
+@api_v1.put('/current_topology')
+async def set_current_topology(
+    request: Request,
+    model_store: model_store_dependency,
+    payload: CurrentTopology,
+) -> JSONResponse:
+    model_store.settings.current_topology = payload.current_topology
+    model_store.save()
+    asyncio.ensure_future(regenerate_layout(request))
+    return JSONResponse(content={"message": "Success"})
 
 @api_v1.post('/models/import')
 async def import_models(
