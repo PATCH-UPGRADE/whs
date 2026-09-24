@@ -365,6 +365,82 @@ def test_generate_populates_router_routes(injector, loop):
     assert (default, floor_gw) in wifi_floor.routes
 
 
+def test_routers_relay_only_their_primary_networks(injector, loop):
+    """Every generated router relays DHCP exactly on the networks it is
+    primary on — no transit networks, no missing primary networks.
+
+    All routers of the Small Hospital topology are built through the real
+    ``build_routers`` path and resolved; each router's resolved
+    ``relay_networks`` (what its dnsmasq is actually configured to relay,
+    via :func:`carthage_base.find_relay_networks`) is compared against the
+    primary networks read from ``topology.yml`` itself, so the assertion
+    holds for any router topology: add a router, rename a network, or make
+    a router primary on an extra network and this still passes.  Transit
+    links are exactly the difference between a router's connections and its
+    primary networks, so a router that relayed a transit network (as the
+    old ``relay_networks = all connections`` behavior did) fails this.
+    """
+    from carthage import AsyncInjector
+
+    injector.add_provider(current_topology, 'Small Hospital', replace=True)
+    topology = _topology('Small Hospital')
+
+    def _build(ns):
+        load_topology(ns, injector=injector)
+        build_routers(ns, injector=injector)
+
+    class layout(CarthageLayout):
+        layout_name = 'whs'
+        domain = 'whs.local'
+        _build(locals())
+
+    layout_instance = layout(injector=injector)
+    loop.run_until_complete(layout_instance.resolve_networking(force=True))
+
+    # One entry per topology router: the networks it is primary on, read
+    # from the topology itself (not hardcoded).
+    expected = {}
+    for rname, rdef in topology['routers'].items():
+        primary = frozenset(
+            conn for conn, options in rdef['connections'].items()
+            if options['role'] == 'primary')
+        assert primary, (
+            f"topology router {rname!r} has no primary network; a "
+            f"relay-only router with relay_server set and no relay "
+            f"networks is rejected by DnsmasqRole at generation")
+        expected[rname] = primary
+
+    layout_ainjector = layout_instance.injector(AsyncInjector)
+    routers = {r.name: r for _k, r in
+               loop.run_until_complete(
+                   layout_ainjector.filter_instantiate_async(RouterModel,
+                                                             lambda k: True))}
+    assert set(routers) == set(expected), (
+        f"routers {sorted(routers)} != topology routers {sorted(expected)}")
+
+    for name, router in routers.items():
+        # The resolved relay networks: exactly the network models the
+        # router's dnsmasq conf gets dhcp-relay lines for.
+        ainjector = router.ainjector
+        relayed = loop.run_until_complete(
+            ainjector.get_instance_async(InjectionKey('find_relay_networks')))
+        # Every relayed network is one the router is directly attached to,
+        # and the set of relayed networks equals its primary networks.
+        attached = {l.net.name for l in router.network_links.values()}
+        assert {n.name for n in relayed} <= attached, (
+            f"{name}: relays {sorted(n.name for n in relayed)} which is "
+            f"not attached: {sorted(attached)}")
+        assert {n.name for n in relayed} == set(expected[name]), (
+            f"{name}: relays {sorted(n.name for n in relayed)} but is "
+            f"primary on {sorted(expected[name])}")
+        # The relay targets are the layout's own network models.
+        link_nets = {l.net for l in router.network_links.values()}
+        for net in relayed:
+            assert net in link_nets, (
+                f"{name}: relay network {net.name!r} is not one of its "
+                f"resolved links' networks")
+
+
 def test_router_is_instrumented_into_entangled_router(injector, loop, entanglement):
     """The entanglement registry holds one :class:`EntangledRouter` per
     router, and each recorded router's ``network_links`` covers exactly the
