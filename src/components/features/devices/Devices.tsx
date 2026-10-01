@@ -91,8 +91,6 @@ export const DeviceCreateUpdateModal = ({
     handleCreate(values);
   };
 
-  console.log("form:", form.getValues());
-
   const isFormPending = form.formState.isSubmitting;
   const verbLabel = isUpdate ? "Update" : "Create";
   const description = isUpdate
@@ -679,7 +677,6 @@ export const DevicesContainer = () => {
       dns_servers: [],
     },
   });
-  console.log(form.getValues().enabled_for_deployment);
 
   const handleCreate = (item: DeviceFormValues) => {
     // handle edge case where user sets container to native then flips back to a VM

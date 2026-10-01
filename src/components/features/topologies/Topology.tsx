@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useParams } from "@tanstack/react-router";
 import cytoscape, {
   type Core,
   type ElementDefinition,
@@ -56,8 +57,6 @@ const NODE_STYLES = [
       shape: "square",
       "text-wrap": "wrap" as const,
       "text-max-width": "60px",
-      width: "50px",
-      height: "50px",
       padding: "12px",
     },
   },
@@ -169,8 +168,10 @@ const createCytoscape = (
   });
 };
 
-export const Topology = () => {
-  const { data: topology } = useQuery({
+export const TopologyContainer = () => {
+  const { topologyName } = useParams({ from: "/topologies/$topologyName" });
+
+  const { data: _topology } = useQuery({
     queryKey: ["currentTopology"],
     queryFn: getCurrentTopology,
   });
@@ -225,13 +226,13 @@ export const Topology = () => {
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink href="/topology">All Topologies</BreadcrumbLink>
+            <BreadcrumbLink href="/topologies">All Topologies</BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator>
             <SlashIcon />
           </BreadcrumbSeparator>
           <BreadcrumbItem>
-            <BreadcrumbPage>{topology?.current_topology}</BreadcrumbPage>
+            <BreadcrumbPage>{topologyName}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
