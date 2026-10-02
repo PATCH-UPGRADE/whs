@@ -5,9 +5,9 @@ const urls = [
   { name: "Devices", path: "/devices" },
   { name: "VM Images", path: "/images" },
   { name: "PCAPs", path: "/pcaps" },
+  { name: "Topologies", path: "/topologies" },
   { name: "Deploy", path: "/deploy" }, // TODO: Make this proper once WHS backend supports multiple deploys
   { name: "Import / Export", path: "/import-export" },
-  { name: "Topology", path: "/topology" },
 ];
 
 export const AppSidebar: React.FC = () => {

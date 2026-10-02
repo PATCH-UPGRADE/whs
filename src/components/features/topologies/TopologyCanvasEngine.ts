@@ -81,11 +81,11 @@ class TopologyCanvasEngine {
 }
 
 const buildCytoscapeElements = (
-  engine: TopologyCanvasEngine | null,
+  _engine: TopologyCanvasEngine | null,
   router: EntangledRouter | undefined,
   devices: Device[] | undefined,
 ): ElementDefinition[] => {
-  if (!engine?.cy || !router) {
+  if (!router) {
     return [];
   }
 
@@ -118,6 +118,7 @@ const buildCytoscapeElements = (
         target: router.name,
         mac: link.mac,
         address: link.address,
+        label: "",
       },
     });
 
@@ -137,7 +138,6 @@ const buildCytoscapeElements = (
   if (devices && devices.length > 0) {
     devices.forEach((device, i) => {
       // tier 3 device nodes
-
       elements.push({
         data: {
           id: device.id,
@@ -153,6 +153,7 @@ const buildCytoscapeElements = (
           id: `${device.id}-${i}`,
           source: device.enabled_for_deployment ? router.name : "disabled",
           target: device.id,
+          label: "",
         },
       });
     });
